@@ -27,15 +27,10 @@ struct NormalizedError {
 
   /// JSON handed to `reject` as `userInfo.details`.
   func detailsJson() -> String {
-    var payload = dictionary()
     // `rawJsonData` is already JSON text, so it is spliced in rather than
     // re-encoded, which would turn the object into an escaped string.
-    let base = Self.encode(payload)
-    guard let partialDataJson else {
-      return Self.splice(base, key: "partialData", json: "null")
-    }
-    payload["partialData"] = nil
-    return Self.splice(base, key: "partialData", json: partialDataJson)
+    let base = Self.encode(dictionary())
+    return Self.splice(base, key: "partialData", json: partialDataJson ?? "null")
   }
 
   /// Payload pushed to JS for a failing subscription update.

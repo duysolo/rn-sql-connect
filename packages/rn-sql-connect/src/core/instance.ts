@@ -108,6 +108,10 @@ const stateOf = (instance: SqlConnect): InstanceState => {
  */
 export const ensureConfigured = async (instance: SqlConnect): Promise<void> => {
   const state = stateOf(instance)
+  // Marked before awaiting, not after. Otherwise a call to
+  // connectSqlConnectEmulator that lands while the first query is still in
+  // flight would be accepted and then quietly ignored.
+  state.used = true
   if (!state.configured) {
     const native = getNativeModule()
     state.configured = (async () => {
@@ -129,7 +133,6 @@ export const ensureConfigured = async (instance: SqlConnect): Promise<void> => {
     })
   }
   await state.configured
-  state.used = true
 }
 
 export type EmulatorOptions = {
@@ -186,7 +189,7 @@ export type Diagnostics = {
   activeSubscriptions: number
   subscriptionIds: string[]
   hasCurrentUser: boolean
-  uid?: string
+  uid?: string | null
   appCheckConfigured: boolean
 }
 

@@ -163,7 +163,7 @@ globalThis.RNSqlConnectDebug = true // logs every native call and its result
 
 | Layer | State |
 | --- | --- |
-| JavaScript core, hook, error mapping, subscription dedupe | Unit tested (65 tests) |
+| JavaScript core, hook, error mapping, subscription dedupe | Unit tested (67 tests) |
 | Code generator | Unit tested, plus verified end to end against two real connectors (55 and 96 operations) |
 | Android Kotlin | Written against the published SDK API surface; not yet compiled in CI |
 | iOS Swift and TurboModule shim | Written against the published SDK sources; not yet compiled in CI |

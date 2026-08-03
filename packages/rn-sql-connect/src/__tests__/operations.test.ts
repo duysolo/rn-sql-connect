@@ -171,6 +171,14 @@ describe('connectSqlConnectEmulator', () => {
     await executeQuery(dc, 'ListNews')
     expect(() => connectSqlConnectEmulator(dc)).toThrow(SqlConnectError)
   })
+
+  it('refuses to switch while the first operation is still in flight', async () => {
+    const dc = getSqlConnect(CONFIG)
+    const inFlight = executeQuery(dc, 'ListNews')
+    // Accepting this would set an emulator that configure() already skipped.
+    expect(() => connectSqlConnectEmulator(dc)).toThrow(SqlConnectError)
+    await inFlight
+  })
 })
 
 describe('terminate', () => {

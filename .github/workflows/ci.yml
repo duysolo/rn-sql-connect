@@ -44,6 +44,9 @@ jobs:
   android:
     name: Android build
     runs-on: ubuntu-latest
+    # Skipped until the example app is scaffolded. A React Native library has no
+    # standalone Gradle project, so it is built through a host app.
+    if: hashFiles('example/android/gradlew') != ''
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -55,13 +58,15 @@ jobs:
           distribution: temurin
           java-version: 17
       - run: npm ci
-      - name: Assemble the library
-        working-directory: packages/rn-sql-connect/android
+      - name: Assemble
+        working-directory: example/android
         run: ./gradlew assembleDebug --no-daemon
 
   ios:
     name: iOS build
     runs-on: macos-15
+    # Skipped until the example app is scaffolded.
+    if: hashFiles('example/ios/Podfile') != ''
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -86,6 +91,7 @@ jobs:
   ios-static-linkage-must-fail:
     name: Podspec rejects static linkage
     runs-on: macos-15
+    if: hashFiles('example/ios/Podfile') != ''
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

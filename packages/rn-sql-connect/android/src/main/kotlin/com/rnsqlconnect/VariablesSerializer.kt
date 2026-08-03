@@ -5,7 +5,6 @@ import com.google.firebase.dataconnect.serializers.AnyValueSerializer
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
-import kotlinx.serialization.descriptors.element
 import kotlinx.serialization.encoding.Encoder
 
 /**
