@@ -1,3 +1,4 @@
+import FirebaseCore
 import UIKit
 import React
 import React_RCTAppDelegate
@@ -14,6 +15,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
+    // Required on Apple platforms: react-native-firebase does not configure
+    // Firebase for you here. Without this, FirebaseApp.app() is nil and every
+    // Data Connect call fails with not-configured.
+    FirebaseApp.configure()
+
     let delegate = ReactNativeDelegate()
     let factory = RCTReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()

@@ -164,11 +164,13 @@ globalThis.RNSqlConnectDebug = true // logs every native call and its result
 | Layer | State |
 | --- | --- |
 | JavaScript core, hook, error mapping, subscription dedupe | Unit tested (67 tests) |
-| Code generator | Unit tested, plus verified end to end against two real connectors (55 and 96 operations) |
-| Android Kotlin | Written against the published SDK API surface; not yet compiled in CI |
-| iOS Swift and TurboModule shim | Written against the published SDK sources; not yet compiled in CI |
+| Code generator | Unit tested, plus generated from three real connectors (6, 55 and 96 operations) and compiled |
+| Android Kotlin | **Runs on a device.** Example app on an Android emulator against the Data Connect emulator: 9 of 9 smoke steps pass, including Int64 fidelity, persistent cache, and a realtime subscription |
+| iOS Swift and TurboModule shim | Builds and loads, but **blocked by an upstream linking issue**. See below |
 
-The first task on the roadmap is an integration spike that builds the example app on both platforms against the emulator. Until that lands, treat the native layer as unproven.
+See [docs/local-testing.md](docs/local-testing.md) for how to reproduce any of this in a few minutes.
+
+**iOS is not shippable yet.** Swift Package Manager resolves one `firebase-ios-sdk` version (12.17.0) for the whole graph, but Xcode links the Firebase library products *statically into each pod framework*, so `FIRApp` ends up duplicated across `RNFBApp.framework`, `RnSqlConnect.framework` and the shared dynamic framework. Each copy keeps its own registry, so `FirebaseApp.configure()` at launch is invisible to the copy this package runs against and every call fails with `not-configured`. The full diagnosis, and why this package refuses to paper over it, is in [docs/ios-spm.md](docs/ios-spm.md#known-issue-firebasecore-is-linked-more-than-once-blocks-ios-today). The fix belongs upstream in react-native-firebase's SPM mode, which shipped the same day this was found.
 
 ## License
 

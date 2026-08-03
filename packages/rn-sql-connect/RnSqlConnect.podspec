@@ -89,7 +89,10 @@ Pod::Spec.new do |s|
     ERROR
   end
 
-  if $RNSqlConnectHasRNFBSpm
-    firebase_dependency(s, $RNSqlConnectFirebaseVersion, ["FirebaseCore"], "Firebase/CoreOnly")
-  end
+  # FirebaseCore is deliberately NOT declared here. FirebaseDataConnect already
+  # depends on it through Swift Package Manager, and adding it a second time
+  # links another static copy of FirebaseCore into this framework. Three copies
+  # of FIRApp then exist in one process (here, RNFBApp, and the SPM framework),
+  # each with its own registry, so FirebaseApp.app() returns nil on the copy
+  # this code runs against even though the app configured Firebase at launch.
 end

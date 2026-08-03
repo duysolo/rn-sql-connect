@@ -60,3 +60,53 @@ Things to look at during step 2:
 - `$RNFirebaseAsStaticFramework`. It is meaningless once Firebase is no longer a pod; remove it.
 - `RCT_USE_PREBUILT_RNCORE`. If it was disabled because react-native-firebase could not resolve `#import <React/...>`, try re-enabling it after the upgrade. Prebuilt React collapses around 65 React pods into one xcframework, which matters a lot when every pod is a dynamic framework.
 - Cold start time and IPA size, measured before and after on the oldest device you support.
+
+## Known issue: FirebaseCore is linked more than once (blocks iOS today)
+
+Status: **iOS is not usable yet**. Android is unaffected and fully working.
+
+### What happens
+
+The example app builds and launches, the TurboModule loads, and the Swift code runs. Every Data Connect call then fails with:
+
+```
+not-configured: Firebase app "[DEFAULT]" is not configured.
+```
+
+even though `AppDelegate` calls `FirebaseApp.configure()` at launch and the crash you get from a malformed `GoogleService-Info.plist` proves that call really runs.
+
+### Why
+
+The runtime says it plainly:
+
+```
+objc[94618]: Class FIRApp is implemented in both
+  .../PackageFrameworks/FirebaseCore_..._PackageProduct.framework
+  and .../RnSqlConnect.framework
+objc[94618]: Class FIRApp is implemented in both
+  .../PackageFrameworks/FirebaseCore_..._PackageProduct.framework
+  and .../RNFBApp.framework
+```
+
+Three copies of FirebaseCore end up in one process:
+
+1. the Swift Package product built as a dynamic framework,
+2. a static copy inside `RNFBApp.framework`,
+3. a static copy inside `RnSqlConnect.framework`.
+
+Xcode links a Swift Package **library** product statically into each binary that depends on it, so every pod that pulls a Firebase product gets its own copy. The Objective-C runtime keeps one `FIRApp` class and warns about the rest, but each copy carries its own file-scope state, including the registry of configured apps. `FirebaseApp.configure()` therefore registers into one copy while `FirebaseApp.app()` reads another and finds nothing.
+
+Removing `firebase_dependency(...)` from this package's podspec, which is where it stands now, drops the redundant declaration but does not fix it: `FirebaseDataConnect` itself depends on `FirebaseCore`, so the static copy still lands in `RnSqlConnect.framework`.
+
+### Why this matters beyond the error message
+
+Even if the copy this package uses were configured on its own, `FirebaseAuth` would be split the same way. Data Connect would read a signed-in user from a copy that react-native-firebase never signed into, and `@auth(USER)` operations would fail while `@auth(PUBLIC)` ones worked. That failure mode is quiet, which is worse than the loud error we have now. So this package deliberately does **not** work around the problem by configuring its own copy.
+
+### Where the fix belongs
+
+Upstream, in react-native-firebase's SPM integration, which shipped in 26.1.0 on 2026-08-03, the same day this was found. Firebase products need to reach every pod as the shared dynamic framework rather than as a per-pod static copy.
+
+Worth reporting with this reproduction. Until then:
+
+- **Android**: fully working, no action needed.
+- **iOS**: blocked. Do not ship it.
