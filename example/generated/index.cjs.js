@@ -1,88 +1,102 @@
-import { queryRef, executeQuery, validateArgsWithOptions, mutationRef, executeMutation, validateArgs, makeMemoryCacheProvider } from 'firebase/data-connect';
+const { queryRef, executeQuery, validateArgsWithOptions, mutationRef, executeMutation, validateArgs, makeMemoryCacheProvider } = require('firebase/data-connect');
 
-export const connectorConfig = {
+const connectorConfig = {
   connector: 'example',
   service: 'example',
   location: 'asia-southeast1'
 };
-export const dataConnectSettings = {
+exports.connectorConfig = connectorConfig;
+const dataConnectSettings = {
   cacheSettings: {
     cacheProvider: makeMemoryCacheProvider(),
     maxAgeSeconds: 5
   }
 };
-export const getMovieByIdRef = (dcOrVars, vars) => {
+exports.dataConnectSettings = dataConnectSettings;
+
+const getMovieByIdRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
   return queryRef(dcInstance, 'GetMovieById', inputVars);
 }
 getMovieByIdRef.operationName = 'GetMovieById';
+exports.getMovieByIdRef = getMovieByIdRef;
 
-export function getMovieById(dcOrVars, varsOrOptions, options) {
+exports.getMovieById = function getMovieById(dcOrVars, varsOrOptions, options) {
   
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
   return executeQuery(getMovieByIdRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
+;
 
-export const listMoviesByGenreRef = (dcOrVars, vars) => {
+const listMoviesByGenreRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars);
   dcInstance._useGeneratedSdk();
   return queryRef(dcInstance, 'ListMoviesByGenre', inputVars);
 }
 listMoviesByGenreRef.operationName = 'ListMoviesByGenre';
+exports.listMoviesByGenreRef = listMoviesByGenreRef;
 
-export function listMoviesByGenre(dcOrVars, varsOrOptions, options) {
+exports.listMoviesByGenre = function listMoviesByGenre(dcOrVars, varsOrOptions, options) {
   
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, false);
   return executeQuery(listMoviesByGenreRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
+;
 
-export const getMyReviewsRef = (dc) => {
+const getMyReviewsRef = (dc) => {
   const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
   dcInstance._useGeneratedSdk();
   return queryRef(dcInstance, 'GetMyReviews');
 }
 getMyReviewsRef.operationName = 'GetMyReviews';
+exports.getMyReviewsRef = getMyReviewsRef;
 
-export function getMyReviews(dcOrOptions, options) {
+exports.getMyReviews = function getMyReviews(dcOrOptions, options) {
   
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
   return executeQuery(getMyReviewsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
+;
 
-export const createMovieRef = (dcOrVars, vars) => {
+const createMovieRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
   return mutationRef(dcInstance, 'CreateMovie', inputVars);
 }
 createMovieRef.operationName = 'CreateMovie';
+exports.createMovieRef = createMovieRef;
 
-export function createMovie(dcOrVars, vars) {
+exports.createMovie = function createMovie(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(createMovieRef(dcInstance, inputVars));
 }
+;
 
-export const updateMovieRef = (dcOrVars, vars) => {
+const updateMovieRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
   return mutationRef(dcInstance, 'UpdateMovie', inputVars);
 }
 updateMovieRef.operationName = 'UpdateMovie';
+exports.updateMovieRef = updateMovieRef;
 
-export function updateMovie(dcOrVars, vars) {
+exports.updateMovie = function updateMovie(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(updateMovieRef(dcInstance, inputVars));
 }
+;
 
-export const deleteMovieRef = (dcOrVars, vars) => {
+const deleteMovieRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
   return mutationRef(dcInstance, 'DeleteMovie', inputVars);
 }
 deleteMovieRef.operationName = 'DeleteMovie';
+exports.deleteMovieRef = deleteMovieRef;
 
-export function deleteMovie(dcOrVars, vars) {
+exports.deleteMovie = function deleteMovie(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
   return executeMutation(deleteMovieRef(dcInstance, inputVars));
 }
-
+;

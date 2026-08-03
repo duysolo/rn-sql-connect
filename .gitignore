@@ -17,3 +17,13 @@ android/local.properties
 ios/build/
 ios/Pods/
 *.xcworkspace/xcuserdata/
+
+# Emulator and local run artefacts
+*-debug.log
+example/dataconnect/.dataconnect/
+example/ios/Pods/
+example/ios/*.xcworkspace
+example/android/.gradle/
+example/android/build/
+example/android/app/build/
+example/.gradle/

@@ -8,19 +8,49 @@ sdk_versions = package["sdkVersions"]["ios"]
 # it any other way means two Firebase copies in one binary, where the Data
 # Connect side sees a FirebaseApp that was never configured.
 begin
-  rnfb_spm = Pod::Executable.execute_command("node", ["-p",
-    "require.resolve('@react-native-firebase/app/firebase_spm.rb', {paths: [process.argv[1]]})",
+  # Resolved through package.json, not through the .rb file directly: the
+  # package's `exports` map does not expose the Ruby helper, so asking node for
+  # it fails with ERR_PACKAGE_PATH_NOT_EXPORTED.
+  rnfb_package_json = Pod::Executable.execute_command("node", ["-p",
+    "require.resolve('@react-native-firebase/app/package.json', {paths: [process.argv[1]]})",
     __dir__]).strip
-  require rnfb_spm
+  rnfb_dir = File.dirname(rnfb_package_json)
+  require File.join(rnfb_dir, "firebase_spm")
   # Read the Firebase version from react-native-firebase itself rather than
   # pinning our own. One package decides the version, always.
-  rnfb_package = JSON.parse(File.read(File.join(File.dirname(rnfb_spm), "package.json")))
+  rnfb_package = JSON.parse(File.read(rnfb_package_json))
   $RNSqlConnectFirebaseVersion = rnfb_package["sdkVersions"]["ios"]["firebase"]
   $RNSqlConnectHasRNFBSpm = true
 rescue StandardError => e
   Pod::UI.warn "[rn-sql-connect] Could not load @react-native-firebase/app/firebase_spm.rb (#{e.message})."
   Pod::UI.warn "[rn-sql-connect] Install @react-native-firebase/app >= 26.1.0. iOS support depends on it."
   $RNSqlConnectHasRNFBSpm = false
+end
+
+# Static linkage cannot work here, so fail during `pod install` with an
+# explanation rather than leaving a wall of duplicate-symbol linker output.
+#
+# Reason: firebase-ios-sdk's Swift Package only declares dynamic library
+# products. Under `use_frameworks! :linkage => :static` every pod that resolves
+# Firebase through SPM embeds its own copy. react-native-firebase raises for the
+# same reason; see `rnfirebase_fail_if_spm_static_linkage!`.
+def rn_sql_connect_fail_if_static_linkage!(installer)
+  static_targets = installer.aggregate_targets.select do |target|
+    target.target_definition.build_type.static?
+  end
+  return if static_targets.empty?
+
+  raise <<~ERROR
+    [rn-sql-connect] SPM plus static linkage is not supported (target(s): #{static_targets.map(&:name).join(', ')}).
+
+    FirebaseDataConnect is only available through Swift Package Manager, and
+    firebase-ios-sdk's Swift Package only ships dynamic library products.
+
+    Fix it with:
+      use_frameworks! :linkage => :dynamic
+
+    See docs/ios-spm.md for the full migration notes.
+  ERROR
 end
 
 Pod::Spec.new do |s|
@@ -62,30 +92,4 @@ Pod::Spec.new do |s|
   if $RNSqlConnectHasRNFBSpm
     firebase_dependency(s, $RNSqlConnectFirebaseVersion, ["FirebaseCore"], "Firebase/CoreOnly")
   end
-end
-
-# Static linkage cannot work here, so fail during `pod install` with an
-# explanation rather than leaving a wall of duplicate-symbol linker output.
-#
-# Reason: firebase-ios-sdk's Swift Package only declares dynamic library
-# products. Under `use_frameworks! :linkage => :static` every pod that resolves
-# Firebase through SPM embeds its own copy. react-native-firebase raises for the
-# same reason; see `rnfirebase_fail_if_spm_static_linkage!`.
-def rn_sql_connect_fail_if_static_linkage!(installer)
-  static_targets = installer.aggregate_targets.select do |target|
-    target.target_definition.build_type.static?
-  end
-  return if static_targets.empty?
-
-  raise <<~ERROR
-    [rn-sql-connect] SPM plus static linkage is not supported (target(s): #{static_targets.map(&:name).join(', ')}).
-
-    FirebaseDataConnect is only available through Swift Package Manager, and
-    firebase-ios-sdk's Swift Package only ships dynamic library products.
-
-    Fix it with:
-      use_frameworks! :linkage => :dynamic
-
-    See docs/ios-spm.md for the full migration notes.
-  ERROR
 end

@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "description": "Monorepo for rn-sql-connect, the React Native native SDK for Firebase SQL Connect (Data Connect)",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "example"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
@@ -14,7 +15,10 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md}\"",
     "test": "jest",
-    "emulator": "firebase emulators:start --only dataconnect,auth --project demo-rn-sql-connect --config example/firebase.json"
+    "emulator": "firebase emulators:start --only dataconnect,auth --project demo-rn-sql-connect --config example/firebase.json",
+    "example:android": "npm run android --workspace rn-sql-connect-example",
+    "example:ios": "npm run ios --workspace rn-sql-connect-example",
+    "example:start": "npm run start --workspace rn-sql-connect-example"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -28,7 +32,7 @@
     "jest": "^29.7.0",
     "prettier": "^3.4.2",
     "react": "^19.2.8",
-    "react-native": "^0.86.2",
+    "react-native": "0.85.3",
     "react-native-builder-bob": "^0.40.17",
     "ts-jest": "^29.2.5",
     "typescript": "^5.7.2"
