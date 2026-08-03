@@ -106,7 +106,14 @@ Even if the copy this package uses were configured on its own, `FirebaseAuth` wo
 
 Upstream, in react-native-firebase's SPM integration, which shipped in 26.1.0 on 2026-08-03, the same day this was found. Firebase products need to reach every pod as the shared dynamic framework rather than as a per-pod static copy.
 
-Worth reporting with this reproduction. Until then:
+Reported with this reproduction: **[invertase/react-native-firebase#9140](https://github.com/invertase/react-native-firebase/issues/9140)**.
+
+Two workarounds were tried here and neither holds up:
+
+- Building this pod as a static framework so it merges into the app binary. It then has to link the whole transitive Swift Package closure itself, starting with `GULAppEnvironmentUtil`, which is not something a consumer should have to mirror by hand.
+- Adding `FirebaseDataConnect` to the app target from the example's `post_install`, mirroring what `rnfirebase_add_spm_core_to_app_target` does for FirebaseCore. This still failed to link, with missing gRPC symbols.
+
+Until the upstream direction is settled:
 
 - **Android**: fully working, no action needed.
 - **iOS**: blocked. Do not ship it.
