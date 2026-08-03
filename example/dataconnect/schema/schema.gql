@@ -1,0 +1,26 @@
+# Sample schema used by the example app and by the emulator based tests.
+# It is intentionally tiny: the point is to exercise every code path of
+# rn-sql-connect, not to model a real product.
+
+type Movie @table(key: "id") {
+  id: UUID! @default(expr: "uuidV4()")
+  title: String!
+  releaseYear: Int
+  genre: String
+  rating: Int
+  # Exercises the scalar types that are carried as strings on the wire, which
+  # is the reason this SDK passes JSON text across the bridge.
+  viewCount: Int64
+  releasedAt: Timestamp
+  releasedOn: Date
+  metadata: Any
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type Review @table(key: "id") {
+  id: UUID! @default(expr: "uuidV4()")
+  movie: Movie!
+  authorUid: String!
+  body: String!
+  createdAt: Timestamp! @default(expr: "request.time")
+}

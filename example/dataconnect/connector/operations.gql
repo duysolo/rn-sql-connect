@@ -1,0 +1,67 @@
+# Operations used by the example app and the emulator tests.
+
+query GetMovieById($id: UUID!) @auth(level: PUBLIC, insecureReason: "sample app") {
+  movie(id: $id) {
+    id
+    title
+    releaseYear
+    genre
+    rating
+    viewCount
+    releasedAt
+    releasedOn
+    metadata
+  }
+}
+
+# A single entity lookup by primary key gets refresh signals implicitly, so this
+# one needs no @refresh directive to work with subscribe().
+
+query ListMoviesByGenre($genre: String, $limit: Int)
+@auth(level: PUBLIC, insecureReason: "sample app")
+@refresh(onMutationExecuted: { operation: "UpdateMovie", condition: "request.variables.genre == mutation.variables.genre" })
+@refresh(onMutationExecuted: { operation: "CreateMovie", condition: "request.variables.genre == mutation.variables.genre" }) {
+  movies(where: { genre: { eq: $genre } }, limit: $limit) {
+    id
+    title
+    genre
+    rating
+  }
+}
+
+query GetMyReviews @auth(level: USER) {
+  reviews(where: { authorUid: { eq_expr: "auth.uid" } }) {
+    id
+    body
+    createdAt
+  }
+}
+
+mutation CreateMovie(
+  $title: String!
+  $releaseYear: Int
+  $genre: String
+  $rating: Int
+  $viewCount: Int64
+  $metadata: Any
+) @auth(level: PUBLIC, insecureReason: "sample app") {
+  movie_insert(
+    data: {
+      title: $title
+      releaseYear: $releaseYear
+      genre: $genre
+      rating: $rating
+      viewCount: $viewCount
+      metadata: $metadata
+    }
+  )
+}
+
+mutation UpdateMovie($id: UUID!, $genre: String, $rating: Int)
+@auth(level: PUBLIC, insecureReason: "sample app") {
+  movie_update(id: $id, data: { genre: $genre, rating: $rating })
+}
+
+mutation DeleteMovie($id: UUID!) @auth(level: PUBLIC, insecureReason: "sample app") {
+  movie_delete(id: $id)
+}

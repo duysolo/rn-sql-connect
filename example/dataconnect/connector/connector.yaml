@@ -1,0 +1,11 @@
+connectorId: example
+generate:
+  javascriptSdk:
+    outputDir: ../../generated
+    package: "@dataconnect/example"
+    # Client caching must be on for realtime subscriptions to deliver updates.
+    # rn-sql-connect configures the native cache itself, but leaving this here
+    # keeps the generated JavaScript SDK comparable during migration.
+    clientCache:
+      maxAge: 5s
+      storage: persistent

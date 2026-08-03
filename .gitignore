@@ -1,0 +1,19 @@
+node_modules/
+dist/
+build/
+coverage/
+.yarn/*
+!.yarn/patches
+.DS_Store
+*.log
+
+# Android
+android/.gradle/
+android/build/
+android/local.properties
+.cxx/
+
+# iOS
+ios/build/
+ios/Pods/
+*.xcworkspace/xcuserdata/

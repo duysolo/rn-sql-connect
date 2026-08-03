@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  javascript:
+    name: Lint, typecheck, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  codegen-roundtrip:
+    name: Codegen round trip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspace rn-sql-connect-codegen
+      # Generates an SDK from the sample connector and compiles it against the
+      # library. Catches format drift in firebase-tools output, which would
+      # otherwise only surface in a consumer app.
+      - run: node scripts/codegen-roundtrip.mjs
+
+  android:
+    name: Android build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - name: Assemble the library
+        working-directory: packages/rn-sql-connect/android
+        run: ./gradlew assembleDebug --no-daemon
+
+  ios:
+    name: iOS build
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Dynamic linkage is the only supported configuration. See docs/ios-spm.md.
+      - name: pod install
+        working-directory: example/ios
+        env:
+          USE_FRAMEWORKS: dynamic
+        run: bundle exec pod install
+      - name: Build
+        working-directory: example/ios
+        run: |
+          xcodebuild -workspace RnSqlConnectExample.xcworkspace \
+            -scheme RnSqlConnectExample \
+            -sdk iphonesimulator \
+            -configuration Debug build | xcpretty
+
+  ios-static-linkage-must-fail:
+    name: Podspec rejects static linkage
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # A negative test. Static linkage cannot work with SPM-provided Firebase,
+      # so `pod install` has to fail with our message rather than produce a
+      # binary that fails at link time.
+      - name: pod install must fail
+        working-directory: example/ios
+        env:
+          USE_FRAMEWORKS: static
+        run: |
+          if bundle exec pod install; then
+            echo "Expected pod install to fail under static linkage"
+            exit 1
+          fi
+
+  upstream-watch:
+    name: Watch upstream SDK releases
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare pinned versions with upstream
+        run: node scripts/check-upstream-versions.mjs

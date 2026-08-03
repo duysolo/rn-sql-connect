@@ -1,0 +1,38 @@
+{
+  "name": "rn-sql-connect-codegen",
+  "version": "0.1.0",
+  "description": "Generates typed rn-sql-connect wrappers from a Firebase-generated Data Connect JavaScript SDK",
+  "bin": {
+    "rn-sql-connect-codegen": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "keywords": [
+    "firebase",
+    "data-connect",
+    "sql-connect",
+    "codegen",
+    "react-native"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/duysolo/rn-sql-connect.git",
+    "directory": "packages/rn-sql-connect-codegen"
+  },
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

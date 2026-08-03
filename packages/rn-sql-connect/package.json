@@ -1,0 +1,98 @@
+{
+  "name": "rn-sql-connect",
+  "version": "0.1.0",
+  "description": "React Native native SDK for Firebase SQL Connect (Data Connect). Wraps the Android and Apple native SDKs instead of running the JS web SDK inside React Native.",
+  "main": "./dist/module/index.js",
+  "types": "./dist/typescript/index.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/typescript/index.d.ts",
+      "default": "./dist/module/index.js"
+    },
+    "./react": {
+      "source": "./src/react/index.ts",
+      "types": "./dist/typescript/react/index.d.ts",
+      "default": "./dist/module/react/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "dist",
+    "android",
+    "ios",
+    "RnSqlConnect.podspec",
+    "!**/__tests__",
+    "!**/.*"
+  ],
+  "scripts": {
+    "build": "bob build",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit -p tsconfig.test.json"
+  },
+  "keywords": [
+    "react-native",
+    "firebase",
+    "data-connect",
+    "sql-connect",
+    "graphql",
+    "postgres",
+    "ios",
+    "android",
+    "turbomodule"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/duysolo/rn-sql-connect.git"
+  },
+  "license": "Apache-2.0",
+  "peerDependencies": {
+    "@react-native-firebase/app": ">=26.1.0",
+    "react": "*",
+    "react-native": ">=0.85.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "codegenConfig": {
+    "name": "RNSqlConnectSpec",
+    "type": "modules",
+    "jsSrcsDir": "src/specs",
+    "android": {
+      "javaPackageName": "com.rnsqlconnect"
+    },
+    "ios": {
+      "modulesProvider": {
+        "RnSqlConnect": "RnSqlConnect"
+      }
+    }
+  },
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "dist",
+    "exclude": "**/{__tests__,__fixtures__,__mocks__}/**",
+    "targets": [
+      [
+        "module",
+        {
+          "esm": true
+        }
+      ],
+      "typescript"
+    ]
+  },
+  "sdkVersions": {
+    "ios": {
+      "dataConnectSpmUrl": "https://github.com/firebase/data-connect-ios-sdk.git",
+      "dataConnect": "11.12.5",
+      "iosTarget": "15.0"
+    },
+    "android": {
+      "minSdk": 23,
+      "firebaseBom": "34.16.0",
+      "kotlinxCoroutines": "1.9.0",
+      "kotlinxSerialization": "1.7.3"
+    }
+  }
+}

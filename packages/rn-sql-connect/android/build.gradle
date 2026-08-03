@@ -1,0 +1,74 @@
+buildscript {
+  ext.getExtOrDefault = { name, fallback ->
+    return rootProject.ext.has(name) ? rootProject.ext.get(name) : fallback
+  }
+
+  repositories {
+    google()
+    mavenCentral()
+  }
+
+  dependencies {
+    classpath "com.android.tools.build:gradle:8.7.2"
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${getExtOrDefault('kotlinVersion', '2.0.21')}"
+  }
+}
+
+def packageJson = new groovy.json.JsonSlurper().parseText(file("$projectDir/../package.json").text)
+def sdkVersions = packageJson.sdkVersions.android
+
+apply plugin: "com.android.library"
+apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "com.facebook.react"
+
+android {
+  namespace "com.rnsqlconnect"
+  compileSdk getExtOrDefault("compileSdkVersion", 35)
+
+  defaultConfig {
+    minSdk Math.max(getExtOrDefault("minSdkVersion", 23), sdkVersions.minSdk)
+    consumerProguardFiles "consumer-rules.pro"
+  }
+
+  buildFeatures {
+    buildConfig true
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+
+  kotlinOptions {
+    jvmTarget = "17"
+  }
+
+  sourceSets {
+    main {
+      java.srcDirs += "src/main/kotlin"
+    }
+  }
+}
+
+repositories {
+  google()
+  mavenCentral()
+}
+
+dependencies {
+  implementation "com.facebook.react:react-android"
+
+  // The Firebase BoM is deliberately overridable. In an app that also uses
+  // @react-native-firebase, that package should own the Firebase version so
+  // there is exactly one source of truth:
+  //   ext { firebaseBomVersion = "34.16.0" }
+  implementation platform("com.google.firebase:firebase-bom:${getExtOrDefault('firebaseBomVersion', sdkVersions.firebaseBom)}")
+  implementation "com.google.firebase:firebase-dataconnect"
+
+  implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:${getExtOrDefault('kotlinxCoroutinesVersion', sdkVersions.kotlinxCoroutines)}"
+  implementation "org.jetbrains.kotlinx:kotlinx-serialization-core:${getExtOrDefault('kotlinxSerializationVersion', sdkVersions.kotlinxSerialization)}"
+
+  // Firebase Auth is deliberately absent. Diagnostics read the signed-in user
+  // through reflection, so apps that do not install @react-native-firebase/auth
+  // still load this module and simply report hasCurrentUser = false.
+}
