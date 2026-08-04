@@ -35,19 +35,19 @@ Running `firebase/data-connect` inside React Native works, but it costs you:
 - So the Apple SDK is vendored into this package and Firebase comes from CocoaPods, the same copy react-native-firebase uses.
 - `pod install` refuses to proceed if that is not the case, rather than letting it fail at runtime.
 
-Full reasoning in [docs/ios-spm.md](docs/ios-spm.md), confirmed upstream in [invertase/react-native-firebase#9140](https://github.com/invertase/react-native-firebase/issues/9140).
+Full reasoning in [iOS architecture](docs/internals/ios-architecture.md), confirmed upstream in [invertase/react-native-firebase#9140](https://github.com/invertase/react-native-firebase/issues/9140).
 
 ## Documentation
 
+Full docs live in [docs/](docs/README.md), grouped by what you are doing.
+
 | | |
 | --- | --- |
-| [Getting started](docs/getting-started.md) | install, configure, first query |
-| [API reference](docs/api.md) | every export, option and error code |
-| [Code generation](docs/codegen.md) | typed wrappers from your connector |
-| [Recipes](docs/recipes.md) | caching, realtime, auth, migrating off the web SDK |
-| [Local testing](docs/local-testing.md) | run it all against the emulator |
-| [Troubleshooting](docs/troubleshooting.md) | real failures and what they mean |
-| [iOS setup](docs/ios-spm.md) | why the Apple SDK is vendored |
+| **Guides**, in order | [Getting started](docs/guides/01-getting-started.md), [queries and mutations](docs/guides/02-queries-and-mutations.md), [caching](docs/guides/03-caching.md), [realtime](docs/guides/04-realtime.md), [auth](docs/guides/05-auth.md), [error handling](docs/guides/06-error-handling.md), [Code generation](docs/guides/07-code-generation.md), [migrating from the web SDK](docs/guides/08-migrating-from-the-web-sdk.md), [testing your app](docs/guides/09-testing-your-app.md) |
+| **Reference** | [API](docs/reference/api.md), [configuration](docs/reference/configuration.md), [error codes](docs/reference/error-codes.md), [data types](docs/reference/data-types.md) |
+| **When it breaks** | [Troubleshooting](docs/troubleshooting.md), which opens with a symptom index |
+| **Internals** | [Bridge design](docs/internals/bridge-design.md), [iOS architecture](docs/internals/ios-architecture.md) |
+| **Contributing** | [Local testing](docs/contributing/local-testing.md) |
 
 ## Install
 
@@ -202,7 +202,7 @@ Each smoke run covers, on a real device, against a real emulator:
 
 Still unproven: App Check (implemented, not exercised), a secondary Firebase app, `Vector` and enum scalars, and true offline behaviour with the network off.
 
-See [docs/local-testing.md](docs/local-testing.md) for how to reproduce any of this in a few minutes.
+See [Local testing](docs/contributing/local-testing.md) for how to reproduce any of this in a few minutes.
 
 On iOS the Apple Data Connect SDK is vendored rather than pulled through Swift Package Manager, because SwiftPM would give this package a private copy of `FirebaseCore` and Data Connect would never see the signed-in user. That is an upstream packaging property, confirmed in [#9140](https://github.com/invertase/react-native-firebase/issues/9140). The vendored copy is pinned and CI fails if it drifts (`npm run vendor:check`).
 

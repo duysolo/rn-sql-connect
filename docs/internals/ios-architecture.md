@@ -1,4 +1,6 @@
-# iOS: why the Apple SDK is vendored
+# iOS architecture
+
+Why the Apple Data Connect SDK is vendored into this package instead of pulled through Swift Package Manager, and what that requires of an app.
 
 ## The short version
 
@@ -92,8 +94,12 @@ The Firebase version is read from react-native-firebase's own `package.json` at 
 
 ## Verified
 
-The example app runs the full smoke suite on a simulator against the Data Connect emulator, 16 of 16 passing, including auth-gated operations, a realtime subscription, the on-disk cache, and every scalar type. See [local-testing.md](local-testing.md).
+The example app runs the full smoke suite on a simulator against the Data Connect emulator, 16 of 16 passing, including auth-gated operations, a realtime subscription, the on-disk cache, and every scalar type. See [local testing](../contributing/local-testing.md).
 
 ## When this can be undone
 
 If firebase-ios-sdk ever declares dynamic products, the Swift Package route becomes viable and the vendored copy can be dropped. Until then, note that Firebase stops publishing to CocoaPods in October 2026: existing pod versions stay installable, so this keeps working, but the Firebase side stops receiving updates at that point. That is the deadline for revisiting this, not a reason to avoid it today.
+
+---
+
+See also: [Bridge design](bridge-design.md) | [Configuration](../reference/configuration.md#podfile) | [Troubleshooting](../troubleshooting.md#duplicate-firapp-warnings-in-the-log)

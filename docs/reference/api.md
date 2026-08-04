@@ -61,7 +61,7 @@ Closes the native instance, cancels its subscriptions, and forgets the handle. A
 
 Using a handle after terminating it throws `not-configured`.
 
-**It does not clear the cache.** With `storage: 'persistent'` the cached responses stay on disk and are available to the next instance, including after an app restart and after a different user signs in. If that matters, see [after sign-out](recipes.md#after-sign-out-the-cache-is-still-there).
+**It does not clear the cache.** With `storage: 'persistent'` the cached responses stay on disk and are available to the next instance, including after an app restart and after a different user signs in. If that matters, see [after sign-out](../guides/05-auth.md#after-sign-out-the-cache-is-still-there).
 
 ### `getDiagnostics(instance)`
 
@@ -305,3 +305,7 @@ Results travel as JSON text, not as a bridge map, because Data Connect encodes s
 | lists | arrays of the above |
 
 `Int64` as a string is the important one. `9007199254740993` cannot be represented as a JavaScript number, and a bridge that converts it silently returns `9007199254740992`. That case is covered by a test on both platforms.
+
+---
+
+See also: [Error codes](error-codes.md) | [Data types](data-types.md) | [Configuration](configuration.md)

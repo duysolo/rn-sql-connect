@@ -131,10 +131,14 @@ No native rebuild. Operations cross the bridge by name, which is the point of th
 
 **`Could not find @react-native/gradle-plugin`**: npm workspaces hoist to the repository root, so `example/android/settings.gradle` points one level higher than the React Native template does. Run `npm install` at the root.
 
-**`pod install` fails saying react-native-firebase is using Swift Package Manager**: that is the guard working. Add `$RNFirebaseDisableSPM = true` to the Podfile. See [ios-spm.md](ios-spm.md).
+**`pod install` fails saying react-native-firebase is using Swift Package Manager**: that is the guard working. Add `$RNFirebaseDisableSPM = true` to the Podfile. See [iOS architecture](../internals/ios-architecture.md).
 
 **iOS says `not-configured`**: `AppDelegate` is missing `FirebaseApp.configure()`, or `GoogleService-Info.plist` is not a member of the app target. The example app has both; copy from there.
 
 **Metro resolves two copies of React**: `example/metro.config.js` sets `disableHierarchicalLookup` and lists both `node_modules` folders. Keep it that way.
 
 **Emulator port 9399 in use**: an earlier run is still alive. `lsof -ti:9399 | xargs kill`.
+
+---
+
+See also: [Bridge design](../internals/bridge-design.md) | [iOS architecture](../internals/ios-architecture.md)

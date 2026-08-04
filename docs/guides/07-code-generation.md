@@ -140,3 +140,7 @@ The generator has been run over three connectors and the output compiled with `t
 
 3. Commit the output. It is generated, but committing it keeps the diff visible when the schema changes, which is often the first sign that a server change is about to reach the app.
 4. Run it in CI on the same job that regenerates the Firebase SDK, so drift shows up as a diff rather than a runtime surprise.
+
+---
+
+Next: [Migrating from the web SDK](08-migrating-from-the-web-sdk.md) | [Testing your app](09-testing-your-app.md)

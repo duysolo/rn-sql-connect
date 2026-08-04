@@ -37,7 +37,7 @@ $RNFirebaseDisableSPM = true
 $RNFirebaseAsStaticFramework = true
 ```
 
-Why this is a hard requirement rather than a preference: [ios-spm.md](ios-spm.md).
+Why this is a hard requirement rather than a preference: [iOS architecture](internals/ios-architecture.md).
 
 ### `The native module 'RnSqlConnect' could not be found`
 
@@ -84,7 +84,7 @@ That is a malformed `GoogleService-Info.plist`, usually a hand-written one for e
 objc[...]: Class FIRApp is implemented in both ... and ...
 ```
 
-Two copies of `FirebaseCore` in the process. Data Connect will report `not-configured` even though the app configured Firebase at launch, because each copy keeps its own registry. It means something is pulling Firebase through Swift Package Manager alongside the CocoaPods copy. Full explanation in [ios-spm.md](ios-spm.md).
+Two copies of `FirebaseCore` in the process. Data Connect will report `not-configured` even though the app configured Firebase at launch, because each copy keeps its own registry. It means something is pulling Firebase through Swift Package Manager alongside the CocoaPods copy. Full explanation in [iOS architecture](internals/ios-architecture.md).
 
 ### `unauthenticated` on an operation, while signed in
 
@@ -113,7 +113,7 @@ This exact shape caused a real incident before this package existed: a config ve
 
 The on-disk cache is not cleared by signing out, nor by `terminate()`. A `CACHE_ONLY` read, or a `PREFER_CACHE` read inside `maxAge`, can still serve rows fetched by the previous user on that device.
 
-The server is not the problem here: `@auth` still refuses the request. The exposure is the local cache. Read user-scoped data with `SERVER_ONLY`, or keep it on an instance configured with `storage: 'memory'`. See [recipes.md](recipes.md#after-sign-out-the-cache-is-still-there).
+The server is not the problem here: `@auth` still refuses the request. The exposure is the local cache. Read user-scoped data with `SERVER_ONLY`, or keep it on an instance configured with `storage: 'memory'`. See [auth guide](guides/05-auth.md#after-sign-out-the-cache-is-still-there).
 
 ### `CACHE_ONLY` throws or returns nothing
 
@@ -121,7 +121,7 @@ There is no cached entry yet. The first read for a set of variables has to come 
 
 ### A subscription never fires after the first value
 
-The operation has no refresh signal. Primary-key lookups get one implicitly; everything else needs `@refresh(onMutationExecuted: ...)`. That is a server-side schema change. See [recipes.md](recipes.md#realtime-that-actually-pushes).
+The operation has no refresh signal. Primary-key lookups get one implicitly; everything else needs `@refresh(onMutationExecuted: ...)`. That is a server-side schema change. See [realtime guide](guides/04-realtime.md#the-server-has-to-agree).
 
 ### Subscriptions pile up during development
 
@@ -177,3 +177,7 @@ Include:
 2. `error.code`, `error.nativeCode` and `error.graphQLErrors`.
 3. The log with `globalThis.RNSqlConnectDebug = true` set, which prints every native call and its result.
 4. Platform, React Native version, and `@react-native-firebase/app` version.
+
+---
+
+Still stuck? Open an issue with the four items listed above, or read [bridge design](internals/bridge-design.md) to judge whether the bug belongs to this package or upstream.

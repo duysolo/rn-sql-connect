@@ -14,7 +14,7 @@ This package is strict about its environment, deliberately: every requirement be
 | iOS deployment target | 15.0 | required by the Apple Data Connect SDK |
 | Android `minSdk` | 23 | required by Firebase BoM 34 |
 
-You also need a Data Connect service to talk to. If you do not have one yet, work against the emulator: see [local-testing.md](local-testing.md), which needs no Firebase project at all.
+You also need a Data Connect service to talk to. If you do not have one yet, work against the emulator: see [local testing](../contributing/local-testing.md), which needs no Firebase project at all.
 
 ## 2. Install
 
@@ -58,7 +58,7 @@ Then:
 cd ios && pod install
 ```
 
-`$RNFirebaseDisableSPM = true` is not optional. `pod install` refuses to proceed without it, with an explanation. The reason is in [ios-spm.md](ios-spm.md): the Apple Data Connect SDK is vendored into this package and takes Firebase from CocoaPods, so react-native-firebase has to resolve Firebase the same way. Otherwise the process ends up with two copies of `FirebaseCore` and Data Connect never sees the user you signed in.
+`$RNFirebaseDisableSPM = true` is not optional. `pod install` refuses to proceed without it, with an explanation. The reason is in [iOS architecture](../internals/ios-architecture.md): the Apple Data Connect SDK is vendored into this package and takes Firebase from CocoaPods, so react-native-firebase has to resolve Firebase the same way. Otherwise the process ends up with two copies of `FirebaseCore` and Data Connect never sees the user you signed in.
 
 Finally, configure Firebase in your `AppDelegate`, which react-native-firebase requires on Apple platforms:
 
@@ -105,7 +105,7 @@ console.log(source) // 'server' on the first call
 await executeMutation(dc, 'CreateMovie', { title: 'Dune', genre: 'Sci-Fi' })
 ```
 
-Operations are addressed **by name**, the same name that appears in your `.gql` file. That is what lets you add operations without rebuilding native code. For type safety, generate typed wrappers instead of calling by name everywhere: see [codegen.md](codegen.md).
+Operations are addressed **by name**, the same name that appears in your `.gql` file. That is what lets you add operations without rebuilding native code. For type safety, generate typed wrappers instead of calling by name everywhere: see [code generation](07-code-generation.md).
 
 ## 5. Point at the emulator during development
 
@@ -151,9 +151,6 @@ For a call-by-call trace:
 globalThis.RNSqlConnectDebug = true
 ```
 
-## Where to go next
+---
 
-- [api.md](api.md) for the full API surface
-- [codegen.md](codegen.md) to get typed wrappers instead of string operation names
-- [recipes.md](recipes.md) for caching strategy, realtime, error handling and migrating off the web SDK
-- [local-testing.md](local-testing.md) to run everything against the emulator
+Next: [Queries and mutations](02-queries-and-mutations.md) | [Caching](03-caching.md) | [API reference](../reference/api.md)
