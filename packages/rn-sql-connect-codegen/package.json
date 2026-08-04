@@ -12,6 +12,7 @@
     "src"
   ],
   "scripts": {
+    "prepare": "tsc -p tsconfig.build.json",
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit -p tsconfig.json"

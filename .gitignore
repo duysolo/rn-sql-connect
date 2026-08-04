@@ -27,3 +27,6 @@ example/android/.gradle/
 example/android/build/
 example/android/app/build/
 example/.gradle/
+
+# Staged at pack time from the repository README
+packages/rn-sql-connect/README.md

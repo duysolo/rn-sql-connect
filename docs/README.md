@@ -40,7 +40,10 @@ New to the package? Read the guides in order. Each one is short and ends with wh
 
 ## Working on this package
 
-[Local testing](contributing/local-testing.md) covers the three loops, from a two-second unit run to a full device run against the emulator.
+| | |
+| --- | --- |
+| [Local testing](contributing/local-testing.md) | the three loops, from a two-second unit run to a full device run against the emulator |
+| [Releasing](contributing/releasing.md) | the publish checklist, versioning rules, and what must be in the tarball |
 
 ## Three things that explain most of the design
 

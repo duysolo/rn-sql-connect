@@ -27,6 +27,8 @@
     "!**/.*"
   ],
   "scripts": {
+    "prepare": "bob build",
+    "prepack": "node ../../scripts/prepack-readme.mjs packages/rn-sql-connect",
     "build": "bob build",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit -p tsconfig.test.json"
