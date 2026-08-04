@@ -2,7 +2,7 @@
 
 React Native SDK for **Firebase SQL Connect** (Data Connect) built on the **native** Android and Apple SDKs, not on the JavaScript web SDK.
 
-> Status: pre-release, **working end to end on both platforms**: 9 of 9 smoke steps pass on an Android emulator and an iOS simulator against the Data Connect emulator. See [Verification status](#verification-status).
+> Status: pre-release, **working end to end on both platforms**: 16 of 16 smoke steps pass on an Android emulator and an iOS simulator against the Data Connect emulator, including auth-gated operations and every scalar type. See [Verification status](#verification-status).
 
 ## Why
 
@@ -91,7 +91,9 @@ const { data, loading, error, source, refetch } = useSqlConnectQuery(dc, 'ListMo
 
 ### Auth and App Check
 
-Nothing to wire up. The native SDKs read the current user and the App Check token from the same `FirebaseApp`. `@auth(USER)` operations work as soon as the user is signed in through `@react-native-firebase/auth`.
+Nothing to wire up. The native SDKs read the current user and the App Check token from the same `FirebaseApp`. `@auth(USER)` operations work as soon as the user is signed in through `@react-native-firebase/auth`, verified on both platforms.
+
+One Data Connect rule worth knowing before you debug it the hard way: **`@auth(level: USER)` rejects anonymous users.** A user signed in with `signInAnonymously` gets `unauthenticated` with `debug_details: "@auth(level: USER) doesn't allow anonymous users"`. Use `@auth(level: USER_ANON)` on the operation if anonymous callers should be allowed.
 
 If a `USER` operation returns `unauthorized`, check what native sees:
 
@@ -168,10 +170,18 @@ globalThis.RNSqlConnectDebug = true // logs every native call and its result
 | --- | --- |
 | JavaScript core, hook, error mapping, subscription dedupe | Unit tested (67 tests) |
 | Code generator | Unit tested, plus generated from three real connectors (6, 55 and 96 operations) and compiled |
-| Android Kotlin | **9 of 9 smoke steps pass** on an Android emulator against the Data Connect emulator |
-| iOS Swift and TurboModule shim | **9 of 9 smoke steps pass** on an iOS simulator, with the Apple SDK vendored and Firebase from CocoaPods |
+| Android Kotlin | **16 of 16 smoke steps pass** on an Android emulator against the Data Connect emulator |
+| iOS Swift and TurboModule shim | **16 of 16 smoke steps pass** on an iOS simulator, with the Apple SDK vendored and Firebase from CocoaPods |
 
-Each smoke run covers a mutation, a server read, an on-disk cache read, a realtime subscription reacting to a mutation, Int64 and UUID fidelity, a nested `Any` scalar containing a null, native diagnostics, and error-code mapping.
+Each smoke run covers, on a real device, against a real emulator:
+
+- a mutation, a server read, an on-disk cache read returning `source: cache`
+- a realtime subscription reacting to a mutation from the same client
+- **every scalar the wire format carries**: `Int64`, `UUID`, `Timestamp`, `Date`, `Float`, `Boolean`, `String`, `Int`, lists of `String` and `Int`, and a nested `Any` containing a null
+- **auth**: an `@auth(level: USER)` operation refused while signed out, then accepted after signing in with `@react-native-firebase/auth`, with native reporting the same uid. No token plumbing anywhere
+- native diagnostics and error-code mapping agreeing across both platforms
+
+Still unproven: App Check (implemented, not exercised), a secondary Firebase app, `Vector` and enum scalars, and true offline behaviour with the network off.
 
 See [docs/local-testing.md](docs/local-testing.md) for how to reproduce any of this in a few minutes.
 

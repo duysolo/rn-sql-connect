@@ -86,3 +86,15 @@ export function deleteMovie(dcOrVars, vars) {
   return executeMutation(deleteMovieRef(dcInstance, inputVars));
 }
 
+export const createMyReviewRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateMyReview', inputVars);
+}
+createMyReviewRef.operationName = 'CreateMyReview';
+
+export function createMyReview(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(createMyReviewRef(dcInstance, inputVars));
+}
+

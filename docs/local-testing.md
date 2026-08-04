@@ -63,16 +63,23 @@ adb logcat -d | grep SMOKE
 ```
 
 ```
-[SMOKE] PASS mutation :: created 331a6bcb7d194f71ae114fc4f78d0606
+[SMOKE] PASS mutation :: created 088624ec24fa42349d11991b120dfe53
 [SMOKE] PASS query SERVER_ONLY :: source=server title=Dune
 [SMOKE] PASS int64 fidelity :: expected 9007199254740993, got 9007199254740993
-[SMOKE] PASS uuid fidelity :: id=331a6bcb7d194f71ae114fc4f78d0606
+[SMOKE] PASS uuid fidelity :: id=088624ec24fa42349d11991b120dfe53
+[SMOKE] PASS timestamp fidelity :: got 2026-08-04T09:30:00.000000Z
+[SMOKE] PASS date fidelity :: expected 2026-08-04, got 2026-08-04
+[SMOKE] PASS float and boolean fidelity :: score=8.5 isFeatured=true
+[SMOKE] PASS list fidelity :: tags=["sci-fi","desert"] scores=[3,5,8]
 [SMOKE] PASS nested Any scalar :: {"nested":{"deep":[1,2,null,"x"]}}
 [SMOKE] PASS query CACHE_ONLY :: source=cache
 [SMOKE] PASS realtime subscription :: updates=[5,3]
+[SMOKE] PASS auth gate blocks a signed-out caller :: unauthenticated: ...
+[SMOKE] PASS auth USER operation with a signed-in user :: uid=RJNdz... reviews=1
+[SMOKE] PASS native sees the signed-in user :: {"hasCurrentUser":true,"uid":"RJNdz..."}
 [SMOKE] PASS diagnostics :: {"configured":true,"activeSubscriptions":0,...}
 [SMOKE] PASS error mapping :: not-found: NOT_FOUND: operation "NoSuchOperation" not found
-[SMOKE] RESULT 9/9 passed
+[SMOKE] RESULT 16/16 passed
 ```
 
 For iOS:
@@ -107,6 +114,10 @@ On Android, `adb reverse tcp:9399 tcp:9399` also works and is what the smoke run
 | CACHE_ONLY returning `source: cache` | Proves the persistent cache is configured, which is one of the two reasons for going native. |
 | realtime subscription | Proves the stream, the JS-side dedupe, and the event bridge. Needs `@refresh` on the operation for anything beyond a primary-key lookup. |
 | error mapping | Proves the platform-specific error taxonomy maps onto the shared codes. |
+| timestamp and date fidelity | Timestamps are the most common non-trivial scalar in a real schema. The check compares the instant rather than the text, since the server normalises the format, so a timezone bug still fails. |
+| auth steps | The reason this package exists. An `@auth(level: USER)` operation is refused while signed out, then accepted after signing in, with native reporting the same uid. Nothing bridges the token. |
+
+**A trap the auth steps walked into first:** `@auth(level: USER)` rejects anonymous users. Signing in with `signInAnonymously` returns `unauthenticated` with `debug_details: "@auth(level: USER) doesn't allow anonymous users"`, even though the server received and verified the token. Operations that should accept anonymous callers need `@auth(level: USER_ANON)`. The smoke test signs in with email for that reason.
 
 ## Adding an operation
 

@@ -15,6 +15,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*CreateMovie*](#createmovie)
   - [*UpdateMovie*](#updatemovie)
   - [*DeleteMovie*](#deletemovie)
+  - [*CreateMyReview*](#createmyreview)
 
 # Accessing the connector
 A connector is a collection of Queries and Mutations. One SDK is generated for each connector - this SDK is generated for the connector `example`. You can find more information about connectors in the [Data Connect documentation](https://firebase.google.com/docs/data-connect#how-does).
@@ -113,6 +114,10 @@ export interface GetMovieByIdData {
     viewCount?: Int64String | null;
     releasedAt?: TimestampString | null;
     releasedOn?: DateString | null;
+    score?: number | null;
+    isFeatured?: boolean | null;
+    tags?: string[] | null;
+    scores?: number[] | null;
     metadata?: unknown | null;
   } & Movie_Key;
 }
@@ -450,6 +455,12 @@ export interface CreateMovieVariables {
   genre?: string | null;
   rating?: number | null;
   viewCount?: Int64String | null;
+  releasedAt?: TimestampString | null;
+  releasedOn?: DateString | null;
+  score?: number | null;
+  isFeatured?: boolean | null;
+  tags?: string[] | null;
+  scores?: number[] | null;
   metadata?: unknown | null;
 }
 ```
@@ -475,6 +486,12 @@ const createMovieVars: CreateMovieVariables = {
   genre: ..., // optional
   rating: ..., // optional
   viewCount: ..., // optional
+  releasedAt: ..., // optional
+  releasedOn: ..., // optional
+  score: ..., // optional
+  isFeatured: ..., // optional
+  tags: ..., // optional
+  scores: ..., // optional
   metadata: ..., // optional
 };
 
@@ -482,7 +499,7 @@ const createMovieVars: CreateMovieVariables = {
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createMovie(createMovieVars);
 // Variables can be defined inline as well.
-const { data } = await createMovie({ title: ..., releaseYear: ..., genre: ..., rating: ..., viewCount: ..., metadata: ..., });
+const { data } = await createMovie({ title: ..., releaseYear: ..., genre: ..., rating: ..., viewCount: ..., releasedAt: ..., releasedOn: ..., score: ..., isFeatured: ..., tags: ..., scores: ..., metadata: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -510,13 +527,19 @@ const createMovieVars: CreateMovieVariables = {
   genre: ..., // optional
   rating: ..., // optional
   viewCount: ..., // optional
+  releasedAt: ..., // optional
+  releasedOn: ..., // optional
+  score: ..., // optional
+  isFeatured: ..., // optional
+  tags: ..., // optional
+  scores: ..., // optional
   metadata: ..., // optional
 };
 
 // Call the `createMovieRef()` function to get a reference to the mutation.
 const ref = createMovieRef(createMovieVars);
 // Variables can be defined inline as well.
-const ref = createMovieRef({ title: ..., releaseYear: ..., genre: ..., rating: ..., viewCount: ..., metadata: ..., });
+const ref = createMovieRef({ title: ..., releaseYear: ..., genre: ..., rating: ..., viewCount: ..., releasedAt: ..., releasedOn: ..., score: ..., isFeatured: ..., tags: ..., scores: ..., metadata: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -756,6 +779,118 @@ console.log(data.movie_delete);
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.movie_delete);
+});
+```
+
+## CreateMyReview
+You can execute the `CreateMyReview` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [generated/index.d.ts](./index.d.ts):
+```typescript
+createMyReview(vars: CreateMyReviewVariables): MutationPromise<CreateMyReviewData, CreateMyReviewVariables>;
+
+interface CreateMyReviewRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateMyReviewVariables): MutationRef<CreateMyReviewData, CreateMyReviewVariables>;
+}
+export const createMyReviewRef: CreateMyReviewRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+createMyReview(dc: DataConnect, vars: CreateMyReviewVariables): MutationPromise<CreateMyReviewData, CreateMyReviewVariables>;
+
+interface CreateMyReviewRef {
+  ...
+  (dc: DataConnect, vars: CreateMyReviewVariables): MutationRef<CreateMyReviewData, CreateMyReviewVariables>;
+}
+export const createMyReviewRef: CreateMyReviewRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the createMyReviewRef:
+```typescript
+const name = createMyReviewRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `CreateMyReview` mutation requires an argument of type `CreateMyReviewVariables`, which is defined in [generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface CreateMyReviewVariables {
+  movieId: UUIDString;
+  body: string;
+}
+```
+### Return Type
+Recall that executing the `CreateMyReview` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `CreateMyReviewData`, which is defined in [generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface CreateMyReviewData {
+  review_insert: Review_Key;
+}
+```
+### Using `CreateMyReview`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, createMyReview, CreateMyReviewVariables } from '@dataconnect/example';
+
+// The `CreateMyReview` mutation requires an argument of type `CreateMyReviewVariables`:
+const createMyReviewVars: CreateMyReviewVariables = {
+  movieId: ..., 
+  body: ..., 
+};
+
+// Call the `createMyReview()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await createMyReview(createMyReviewVars);
+// Variables can be defined inline as well.
+const { data } = await createMyReview({ movieId: ..., body: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await createMyReview(dataConnect, createMyReviewVars);
+
+console.log(data.review_insert);
+
+// Or, you can use the `Promise` API.
+createMyReview(createMyReviewVars).then((response) => {
+  const data = response.data;
+  console.log(data.review_insert);
+});
+```
+
+### Using `CreateMyReview`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, createMyReviewRef, CreateMyReviewVariables } from '@dataconnect/example';
+
+// The `CreateMyReview` mutation requires an argument of type `CreateMyReviewVariables`:
+const createMyReviewVars: CreateMyReviewVariables = {
+  movieId: ..., 
+  body: ..., 
+};
+
+// Call the `createMyReviewRef()` function to get a reference to the mutation.
+const ref = createMyReviewRef(createMyReviewVars);
+// Variables can be defined inline as well.
+const ref = createMyReviewRef({ movieId: ..., body: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = createMyReviewRef(dataConnect, createMyReviewVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.review_insert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.review_insert);
 });
 ```
 

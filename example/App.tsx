@@ -19,7 +19,7 @@ import {
   Text,
   View,
 } from 'react-native'
-import { runSmokeTest, type SmokeStep } from './src/smoke'
+import { runSmokeTest, connectAuthToEmulator, type SmokeStep } from './src/smoke'
 import {
   connectSqlConnectEmulator,
   executeMutation,
@@ -41,6 +41,9 @@ const dc = getSqlConnect(
 // through 127.0.0.1. Leaving the host empty lets each native SDK apply its own
 // default, which is exactly that mapping.
 connectSqlConnectEmulator(dc, { port: 9399 })
+// Auth runs against the emulator too, so the auth-gated steps need no real
+// project and no real credentials.
+connectAuthToEmulator()
 
 type LogEntry = { id: number; text: string; failed: boolean }
 

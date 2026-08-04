@@ -1,6 +1,7 @@
 # Sample schema used by the example app and by the emulator based tests.
-# It is intentionally tiny: the point is to exercise every code path of
-# rn-sql-connect, not to model a real product.
+# It is intentionally tiny, but it covers every scalar the SDK has to carry
+# across the bridge, because type fidelity is the thing most likely to break
+# quietly.
 
 type Movie @table(key: "id") {
   id: UUID! @default(expr: "uuidV4()")
@@ -8,11 +9,21 @@ type Movie @table(key: "id") {
   releaseYear: Int
   genre: String
   rating: Int
-  # Exercises the scalar types that are carried as strings on the wire, which
-  # is the reason this SDK passes JSON text across the bridge.
+
+  # Scalars that are carried as strings on the wire. Getting these wrong is
+  # invisible until a number is off by one or a date shifts by a timezone.
   viewCount: Int64
   releasedAt: Timestamp
   releasedOn: Date
+
+  # Scalars that are carried as JSON primitives.
+  score: Float
+  isFeatured: Boolean
+
+  # Lists. Data Connect maps a GraphQL list to a one-dimensional SQL array.
+  tags: [String]
+  scores: [Int]
+
   metadata: Any
   createdAt: Timestamp! @default(expr: "request.time")
 }

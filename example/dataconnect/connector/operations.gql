@@ -10,6 +10,10 @@ query GetMovieById($id: UUID!) @auth(level: PUBLIC, insecureReason: "sample app"
     viewCount
     releasedAt
     releasedOn
+    score
+    isFeatured
+    tags
+    scores
     metadata
   }
 }
@@ -29,6 +33,9 @@ query ListMoviesByGenre($genre: String, $limit: Int)
   }
 }
 
+# Requires a signed-in user. Proves that Data Connect reads the identity from
+# the same FirebaseApp that react-native-firebase configured, which is the whole
+# reason this package exists.
 query GetMyReviews @auth(level: USER) {
   reviews(where: { authorUid: { eq_expr: "auth.uid" } }) {
     id
@@ -43,6 +50,12 @@ mutation CreateMovie(
   $genre: String
   $rating: Int
   $viewCount: Int64
+  $releasedAt: Timestamp
+  $releasedOn: Date
+  $score: Float
+  $isFeatured: Boolean
+  $tags: [String!]
+  $scores: [Int!]
   $metadata: Any
 ) @auth(level: PUBLIC, insecureReason: "sample app") {
   movie_insert(
@@ -52,6 +65,12 @@ mutation CreateMovie(
       genre: $genre
       rating: $rating
       viewCount: $viewCount
+      releasedAt: $releasedAt
+      releasedOn: $releasedOn
+      score: $score
+      isFeatured: $isFeatured
+      tags: $tags
+      scores: $scores
       metadata: $metadata
     }
   )
@@ -64,4 +83,9 @@ mutation UpdateMovie($id: UUID!, $genre: String, $rating: Int)
 
 mutation DeleteMovie($id: UUID!) @auth(level: PUBLIC, insecureReason: "sample app") {
   movie_delete(id: $id)
+}
+
+# Writes as the signed-in user. Pairs with GetMyReviews.
+mutation CreateMyReview($movieId: UUID!, $body: String!) @auth(level: USER) {
+  review_insert(data: { movieId: $movieId, body: $body, authorUid_expr: "auth.uid" })
 }

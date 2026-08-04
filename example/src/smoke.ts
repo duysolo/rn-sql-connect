@@ -10,6 +10,13 @@
  * device log instead of somebody tapping buttons and reading a screen.
  */
 import {
+  connectAuthEmulator,
+  createUserWithEmailAndPassword,
+  getAuth,
+  signOut,
+} from '@react-native-firebase/auth'
+import { Platform } from 'react-native'
+import {
   executeMutation,
   executeQuery,
   getDiagnostics,
@@ -26,6 +33,11 @@ export type SmokeStep = {
 }
 
 const INT64 = '9007199254740993'
+const RELEASED_AT = '2026-08-04T09:30:00Z'
+const RELEASED_ON = '2026-08-04'
+const SCORE = 8.5
+const TAGS = ['sci-fi', 'desert']
+const SCORES = [3, 5, 8]
 
 const wait = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -38,8 +50,24 @@ type MovieRow = {
     title: string
     rating?: number | null
     viewCount?: string | null
+    releasedAt?: string | null
+    releasedOn?: string | null
+    score?: number | null
+    isFeatured?: boolean | null
+    tags?: string[] | null
+    scores?: number[] | null
     metadata?: unknown
   }
+}
+
+/**
+ * Points Firebase Auth at the emulator. The host differs per runtime: the
+ * Android emulator reaches the machine through 10.0.2.2, everything else
+ * through localhost.
+ */
+export const connectAuthToEmulator = (): void => {
+  const host = Platform.OS === 'android' ? '10.0.2.2' : '127.0.0.1'
+  connectAuthEmulator(getAuth(), `http://${host}:9099`)
 }
 
 export const runSmokeTest = async (
@@ -63,6 +91,12 @@ export const runSmokeTest = async (
       genre: 'Sci-Fi',
       rating: 5,
       viewCount: INT64,
+      releasedAt: RELEASED_AT,
+      releasedOn: RELEASED_ON,
+      score: SCORE,
+      isFeatured: true,
+      tags: TAGS,
+      scores: SCORES,
       metadata: { nested: { deep: [1, 2, null, 'x'] } },
     })
     movieId = created.data.movie_insert.id
@@ -96,6 +130,28 @@ export const runSmokeTest = async (
       'uuid fidelity',
       typeof movie?.id === 'string' && movie.id === movieId,
       `id=${String(movie?.id)}`,
+    )
+    // The server normalises the timestamp format, so compare the instant rather
+    // than the text. A timezone bug still fails this.
+    const sameInstant =
+      typeof movie?.releasedAt === 'string' &&
+      Date.parse(movie.releasedAt) === Date.parse(RELEASED_AT)
+    record('timestamp fidelity', sameInstant, `got ${String(movie?.releasedAt)}`)
+    record(
+      'date fidelity',
+      movie?.releasedOn === RELEASED_ON,
+      `expected ${RELEASED_ON}, got ${String(movie?.releasedOn)}`,
+    )
+    record(
+      'float and boolean fidelity',
+      movie?.score === SCORE && movie?.isFeatured === true,
+      `score=${String(movie?.score)} isFeatured=${String(movie?.isFeatured)}`,
+    )
+    record(
+      'list fidelity',
+      JSON.stringify(movie?.tags) === JSON.stringify(TAGS) &&
+        JSON.stringify(movie?.scores) === JSON.stringify(SCORES),
+      `tags=${JSON.stringify(movie?.tags)} scores=${JSON.stringify(movie?.scores)}`,
     )
     const metadata = movie?.metadata as { nested?: { deep?: unknown[] } } | undefined
     record(
@@ -161,6 +217,58 @@ export const runSmokeTest = async (
     record('realtime subscription', false, describeError(error))
   }
 
+  // Auth. This is the reason the package exists: Data Connect has to read the
+  // identity from the same FirebaseApp that react-native-firebase configured,
+  // with no token plumbing in between.
+  const auth = getAuth()
+
+  try {
+    await executeQuery(dc, 'GetMyReviews', undefined, {
+      fetchPolicy: QueryFetchPolicy.SERVER_ONLY,
+    })
+    record('auth gate blocks a signed-out caller', false, 'the query succeeded while signed out')
+  } catch (error) {
+    const code = error instanceof SqlConnectError ? error.code : 'unknown'
+    record(
+      'auth gate blocks a signed-out caller',
+      code === 'unauthenticated' || code === 'unauthorized',
+      describeError(error),
+    )
+  }
+
+  try {
+    // Email sign-in rather than anonymous on purpose: Data Connect's
+    // `@auth(level: USER)` rejects anonymous users, which need `USER_ANON`.
+    // A fresh address per run keeps repeated runs independent.
+    const email = `smoke-${Date.now()}@example.com`
+    const credential = await createUserWithEmailAndPassword(auth, email, 'smoke-password')
+    const uid = credential.user.uid
+
+    await executeMutation(dc, 'CreateMyReview', { movieId, body: 'Watched it twice.' })
+    const reviews = await executeQuery<{ reviews: { id: string; body: string }[] }>(
+      dc,
+      'GetMyReviews',
+      undefined,
+      { fetchPolicy: QueryFetchPolicy.SERVER_ONLY },
+    )
+    record(
+      'auth USER operation with a signed-in user',
+      reviews.data.reviews.some(review => review.body === 'Watched it twice.'),
+      `uid=${uid} reviews=${reviews.data.reviews.length}`,
+    )
+
+    const diagnostics = await getDiagnostics(dc)
+    record(
+      'native sees the signed-in user',
+      diagnostics.hasCurrentUser === true && diagnostics.uid === uid,
+      JSON.stringify({ hasCurrentUser: diagnostics.hasCurrentUser, uid: diagnostics.uid }),
+    )
+
+    await signOut(auth)
+  } catch (error) {
+    record('auth USER operation with a signed-in user', false, describeError(error))
+  }
+
   try {
     const diagnostics = await getDiagnostics(dc)
     record(
@@ -176,7 +284,7 @@ export const runSmokeTest = async (
     await executeQuery(dc, 'NoSuchOperation')
     record('error mapping', false, 'expected a failure but the call succeeded')
   } catch (error) {
-    const mapped = error instanceof SqlConnectError
+    const mapped = error instanceof SqlConnectError && error.code === 'not-found'
     record('error mapping', mapped, describeError(error))
   }
 

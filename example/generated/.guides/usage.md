@@ -14,7 +14,7 @@ If a user is not using a supported framework, they can use the generated SDK dir
 Here's an example of how to use it with the first 5 operations:
 
 ```js
-import { getMovieById, listMoviesByGenre, getMyReviews, createMovie, updateMovie, deleteMovie } from '@dataconnect/example';
+import { getMovieById, listMoviesByGenre, getMyReviews, createMovie, updateMovie, deleteMovie, createMyReview } from '@dataconnect/example';
 
 
 // Operation GetMovieById:  For variables, look at type GetMovieByIdVars in ../index.d.ts
@@ -34,6 +34,9 @@ const { data } = await UpdateMovie(dataConnect, updateMovieVars);
 
 // Operation DeleteMovie:  For variables, look at type DeleteMovieVars in ../index.d.ts
 const { data } = await DeleteMovie(dataConnect, deleteMovieVars);
+
+// Operation CreateMyReview:  For variables, look at type CreateMyReviewVars in ../index.d.ts
+const { data } = await CreateMyReview(dataConnect, createMyReviewVars);
 
 
 ```

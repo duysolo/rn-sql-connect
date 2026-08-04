@@ -1,5 +1,8 @@
 PODS:
   - FBLazyVector (0.85.3)
+  - Firebase/Auth (12.17.0):
+    - Firebase/CoreOnly
+    - FirebaseAuth (~> 12.17.0)
   - Firebase/CoreOnly (12.17.0):
     - FirebaseCore (~> 12.17.0)
   - FirebaseAppCheckInterop (12.17.0)
@@ -1923,6 +1926,30 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - RNFBAuth (26.1.0):
+    - Firebase/Auth (= 12.17.0)
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - RNFBApp
+    - Yoga
   - RnSqlConnect (0.1.0):
     - Firebase/CoreOnly (= 12.17.0)
     - FirebaseAppCheckInterop (= 12.17.0)
@@ -2029,6 +2056,7 @@ DEPENDENCIES:
   - ReactCommon/turbomodule/core (from `../../node_modules/react-native/ReactCommon`)
   - ReactNativeDependencies (from `../../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
   - "RNFBApp (from `../../node_modules/@react-native-firebase/app`)"
+  - "RNFBAuth (from `../../node_modules/@react-native-firebase/auth`)"
   - RnSqlConnect (from `../../packages/rn-sql-connect`)
   - Yoga (from `../../node_modules/react-native/ReactCommon/yoga`)
 
@@ -2197,6 +2225,8 @@ EXTERNAL SOURCES:
     :podspec: "../../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
   RNFBApp:
     :path: "../../node_modules/@react-native-firebase/app"
+  RNFBAuth:
+    :path: "../../node_modules/@react-native-firebase/auth"
   RnSqlConnect:
     :path: "../../packages/rn-sql-connect"
   Yoga:
@@ -2288,6 +2318,7 @@ SPEC CHECKSUMS:
   ReactNativeDependencies: 1537bf94a0c7bb7defa6988800bad0b3623719b8
   RecaptchaInterop: 11e0b637842dfb48308d242afc3f448062325aba
   RNFBApp: b66d017038ebaa6d873b94cbfa191380f2dda2c1
+  RNFBAuth: 6834a6afe8634419a78382cc8997530d0476cf87
   RnSqlConnect: 6585517d0fc72cb0d808c7348b37106593c9bedb
   Yoga: e240fec777ff1f21ef42ccebbb44b6d262125855
 

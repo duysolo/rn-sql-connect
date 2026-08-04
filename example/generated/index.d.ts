@@ -21,7 +21,22 @@ export interface CreateMovieVariables {
   genre?: string | null;
   rating?: number | null;
   viewCount?: Int64String | null;
+  releasedAt?: TimestampString | null;
+  releasedOn?: DateString | null;
+  score?: number | null;
+  isFeatured?: boolean | null;
+  tags?: string[] | null;
+  scores?: number[] | null;
   metadata?: unknown | null;
+}
+
+export interface CreateMyReviewData {
+  review_insert: Review_Key;
+}
+
+export interface CreateMyReviewVariables {
+  movieId: UUIDString;
+  body: string;
 }
 
 export interface DeleteMovieData {
@@ -42,6 +57,10 @@ export interface GetMovieByIdData {
     viewCount?: Int64String | null;
     releasedAt?: TimestampString | null;
     releasedOn?: DateString | null;
+    score?: number | null;
+    isFeatured?: boolean | null;
+    tags?: string[] | null;
+    scores?: number[] | null;
     metadata?: unknown | null;
   } & Movie_Key;
 }
@@ -163,4 +182,16 @@ export const deleteMovieRef: DeleteMovieRef;
 
 export function deleteMovie(vars: DeleteMovieVariables): MutationPromise<DeleteMovieData, DeleteMovieVariables>;
 export function deleteMovie(dc: DataConnect, vars: DeleteMovieVariables): MutationPromise<DeleteMovieData, DeleteMovieVariables>;
+
+interface CreateMyReviewRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: CreateMyReviewVariables): MutationRef<CreateMyReviewData, CreateMyReviewVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: CreateMyReviewVariables): MutationRef<CreateMyReviewData, CreateMyReviewVariables>;
+  operationName: string;
+}
+export const createMyReviewRef: CreateMyReviewRef;
+
+export function createMyReview(vars: CreateMyReviewVariables): MutationPromise<CreateMyReviewData, CreateMyReviewVariables>;
+export function createMyReview(dc: DataConnect, vars: CreateMyReviewVariables): MutationPromise<CreateMyReviewData, CreateMyReviewVariables>;
 
