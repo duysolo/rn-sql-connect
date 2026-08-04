@@ -50,7 +50,7 @@
   },
   "license": "Apache-2.0",
   "peerDependencies": {
-    "@react-native-firebase/app": ">=26.1.0",
+    "@react-native-firebase/app": ">=24.0.0",
     "react": "*",
     "react-native": ">=0.85.0"
   },

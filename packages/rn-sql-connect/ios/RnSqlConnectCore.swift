@@ -30,6 +30,10 @@ public final class RnSqlConnectCore: NSObject {
 
   // MARK: - Lifecycle
 
+  /// Settings requested per instance key. Kept across `terminate()` on purpose;
+  /// see the note in `configure`.
+  private var settingsByKey: [String: String] = [:]
+
   @objc public func configure(
     instanceKey: String,
     appName: String,
@@ -47,6 +51,33 @@ public final class RnSqlConnectCore: NSObject {
       resolve(nil)
       return
     }
+
+    // Settings are locked for the life of the PROCESS on this platform, not the
+    // life of the instance. The Apple SDK's InstanceStore keys instances by
+    // (app, config) with settings left out of the key, and offers no way to
+    // remove one, so the first DataConnect built here outlives every attempt to
+    // replace it and later settings are ignored without a word. Android's
+    // close() really does tear down, so the same code works there, which is
+    // exactly what makes the silence dangerous: it only bites on one platform.
+    //
+    // So: remember what was asked for, and refuse a second, different answer
+    // rather than pretending to apply it. `settingsByKey` deliberately survives
+    // terminate() - that is the hole this closes.
+    let requested = settingsJson ?? ""
+    if let previous = settingsByKey[instanceKey], previous != requested {
+      let error = NormalizedError(
+        code: "invalid-argument",
+        message: "Data Connect settings cannot be changed once an instance exists in this "
+          + "process. Apple's SDK caches instances by app and connector, ignoring settings, and "
+          + "offers no way to drop one, so the new settings would be silently ignored. Restart "
+          + "the app to apply different settings.",
+        operationName: nil,
+        nativeCode: "SettingsLockedForProcess"
+      )
+      reject(error.code, error.message, error.detailsJson())
+      return
+    }
+    settingsByKey[instanceKey] = requested
 
     guard let app = firebaseApp(named: appName) else {
       let error = NormalizedError(
@@ -122,7 +153,24 @@ public final class RnSqlConnectCore: NSObject {
         )
         let result = try await ref.execute(fetchPolicy: Self.parseFetchPolicy(fetchPolicy))
         let source = result.source == .cache ? "cache" : "server"
-        resolve(try Self.payload(data: result.data, source: source))
+        // A CACHE_ONLY miss arrives here as a success carrying no data. Android
+        // throws CachedDataNotFoundException for the same situation, so reporting
+        // it as a result would leave the two platforms disagreeing about what a
+        // cold cache looks like, and would hand JS a null under a type that says
+        // otherwise. Both platforms report `cache-miss`.
+        guard let data = result.data else {
+          let miss = NormalizedError(
+            code: "cache-miss",
+            message: "CACHE_ONLY found nothing cached for \"\(operationName)\". Note that maxAge "
+              + "defaults to 0, which caches responses but never serves them; raise it to read "
+              + "from the cache.",
+            operationName: operationName,
+            nativeCode: "CacheMiss"
+          )
+          reject(miss.code, miss.message, miss.detailsJson())
+          return
+        }
+        resolve(try Self.payload(data: data, source: source))
       } catch {
         let normalized = NormalizedError.from(error, operationName: operationName)
         reject(normalized.code, normalized.message, normalized.detailsJson())

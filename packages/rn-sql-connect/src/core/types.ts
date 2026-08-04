@@ -68,6 +68,11 @@ export type ExecuteQueryOptions = {
   fetchPolicy?: QueryFetchPolicy
 }
 
+/**
+ * `data` is never null here. A cache miss is reported as a `cache-miss` error
+ * rather than a result with nothing in it, so that call sites can read
+ * `result.data.field` without a null check on every single one of them.
+ */
 export type QueryResult<Data> = {
   data: Data
   source: DataSource

@@ -44,12 +44,36 @@ internal data class NormalizedError(
     /**
      * Maps a throwable coming out of the SDK.
      *
-     * gRPC status names are matched from the message because the SDK does not
-     * expose the status itself. This is best effort by design: an unrecognised
-     * error becomes `internal` with the original text preserved, which is more
-     * useful than guessing.
+     * Exception types are checked before message text. Text matching is a last
+     * resort here because the SDK does not expose the gRPC status: it breaks on
+     * any wording change upstream, and it misfires on a message that happens to
+     * contain a status name. An unrecognised error becomes `internal` with the
+     * original text preserved, which is more useful than guessing.
      */
     fun from(throwable: Throwable, operationName: String?): NormalizedError {
+      // A CACHE_ONLY miss arrives as CachedDataNotFoundException. Apple platforms
+      // report that situation as `cache-miss`, so without this branch the two
+      // platforms disagree about what a cold cache looks like: text matching
+      // alone lands it in `internal`, because "cached data not found" does not
+      // contain the literal "NOT_FOUND".
+      //
+      // Matched by class NAME rather than by type on purpose: the class is
+      // `internal` in the Firebase SDK, so `is CachedDataNotFoundException` does
+      // not compile outside that module. A name is still a far stabler signal
+      // than a message, and being internal also means upstream may rename it
+      // without calling that a breaking change - hence the fall-through below
+      // rather than anything that depends on this matching.
+      if (throwable::class.java.simpleName == "CachedDataNotFoundException") {
+        return NormalizedError(
+          code = "cache-miss",
+          message = throwable.message
+            ?: "CACHE_ONLY found nothing cached. Note that maxAge defaults to 0, which caches " +
+            "responses but never serves them; raise it to read from the cache.",
+          operationName = operationName,
+          nativeCode = throwable::class.java.simpleName,
+        )
+      }
+
       if (throwable is DataConnectOperationException) {
         val response = throwable.response
         val infos = response.errors.map { error ->

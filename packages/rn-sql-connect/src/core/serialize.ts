@@ -4,9 +4,10 @@ import type { Variables } from './types'
 /**
  * Serialises operation variables for the bridge.
  *
- * `undefined` properties are dropped rather than sent as null. In GraphQL those
- * are different things: dropping means "leave the argument out", null means
- * "set this to null". Data Connect mutations act on that difference.
+ * `undefined` properties are dropped rather than sent as null, which is what
+ * `JSON.stringify` does on its own. In GraphQL those are different things:
+ * dropping means "leave the argument out", null means "set this to null", and
+ * Data Connect mutations act on that difference.
  */
 export const serializeVariables = (variables: Variables): string => {
   if (variables === undefined || variables === null) {
@@ -19,7 +20,7 @@ export const serializeVariables = (variables: Variables): string => {
     })
   }
   try {
-    return JSON.stringify(variables, (_key, value) => (value === undefined ? undefined : value))
+    return JSON.stringify(variables)
   } catch (error) {
     throw new SqlConnectError({
       code: 'invalid-argument',

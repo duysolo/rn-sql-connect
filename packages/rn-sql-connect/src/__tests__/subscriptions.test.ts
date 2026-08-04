@@ -183,4 +183,33 @@ describe('subscribe', () => {
     await flush()
     expect(native.__calls.filter(call => call.method === 'unsubscribe')).toHaveLength(1)
   })
+
+  /**
+   * Observers used to be stored raw in a Set, so subscribing twice with the same
+   * object collapsed into one entry and either unsubscribe silenced both.
+   */
+  it('keeps the second subscription alive when the same observer object is reused', async () => {
+    const dc = getSqlConnect(CONFIG)
+    const seen: number[] = []
+    const observer = { next: () => seen.push(1) }
+
+    const first = subscribe(dc, 'ListNews', undefined, observer)
+    const second = subscribe(dc, 'ListNews', undefined, observer)
+    // The native call only lands after configure resolves, so the subId does not
+    // exist until this settles.
+    await flush()
+    expect(activeSubscriptionCount()).toBe(1)
+
+    first()
+    // The shared native subscription must survive: one caller is still listening.
+    expect(activeSubscriptionCount()).toBe(1)
+
+    const subId = (native.__calls.find(call => call.method === 'subscribe')?.args[1] ?? '') as string
+    native.__emit({ subId, payloadJson: JSON.stringify({ data: { ok: true }, source: 'server' }) })
+    expect(seen).toHaveLength(1)
+
+    second()
+    expect(activeSubscriptionCount()).toBe(0)
+  })
+
 })

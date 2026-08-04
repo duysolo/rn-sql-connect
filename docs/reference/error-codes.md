@@ -7,6 +7,7 @@ Every value `SqlConnectError.code` can take. The same code means the same thing 
 | `unauthenticated` | no signed-in user, or the token was rejected | signed out, or `@auth(level: USER)` with an anonymous user |
 | `unauthorized` | signed in, but the `@auth` rule refused the call | the rule on the operation, not the client |
 | `not-found` | unknown operation, or a lookup found nothing the schema requires | a typo in the operation name, or a connector that was never deployed |
+| `cache-miss` | `CACHE_ONLY` found nothing cached | usually `maxAge` left at its default of 0, which caches responses but never serves them |
 | `invalid-argument` | bad variables, or an API misuse this package caught first | wrong variable type, or `connectSqlConnectEmulator` called too late |
 | `partial-error` | the server returned data **and** errors | one field of the selection failed |
 | `unavailable` | network or backend unreachable, including timeouts | offline, or the emulator is not running |
@@ -18,6 +19,9 @@ Every value `SqlConnectError.code` can take. The same code means the same thing 
 ## How a code is decided
 
 Both platforms normalise into this list rather than exposing their own taxonomy, because they do not agree: Android throws a tree of exceptions, Apple platforms expose four unrelated structs.
+
+`cache-miss` is deliberately separate from `not-found`. Folding them together would leave a `catch`
+unable to tell a typo in an operation name from a cold cache, which are opposite problems.
 
 Where a gRPC status is available it is read directly, not guessed from the message text. That is why the same failure produces the same code on both platforms, verified by the smoke suite for `not-found`.
 

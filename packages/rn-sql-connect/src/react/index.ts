@@ -48,9 +48,11 @@ export const useSqlConnectQuery = <Data = unknown, Vars extends Variables = Vari
 
   // Variables are compared by value. Callers should not have to memoise the
   // object literal they pass in, that is a classic source of render loops.
+  //
+  // `variables` is read directly in the callbacks below and the effects key on
+  // `variablesKey` instead. An earlier version mirrored it into a ref and wrote
+  // that ref during render, which is not safe under concurrent rendering.
   const variablesKey = stableKey(variables ?? {})
-  const variablesRef = useRef(variables)
-  variablesRef.current = variables
 
   const mountedRef = useRef(true)
   useEffect(() => {
@@ -66,7 +68,7 @@ export const useSqlConnectQuery = <Data = unknown, Vars extends Variables = Vari
       const result = await executeQuery<Data, Vars>(
         instance,
         operationName,
-        variablesRef.current,
+        variables,
         { fetchPolicy },
       )
       if (mountedRef.current) {
@@ -80,19 +82,26 @@ export const useSqlConnectQuery = <Data = unknown, Vars extends Variables = Vari
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instance, operationName, fetchPolicy, variablesKey])
 
+  // Two effects rather than one branching effect. Sharing it meant the
+  // subscription depended on `runQuery`, whose identity changes with
+  // `fetchPolicy`, so changing the fetch policy tore down a live subscription
+  // and built a new one for nothing.
   useEffect(() => {
-    if (skip) {
-      setState(previous => ({ ...previous, loading: false }))
+    if (skip || live) {
+      if (skip) {
+        setState(previous => ({ ...previous, loading: false }))
+      }
       return
     }
+    void runQuery()
+  }, [skip, live, runQuery])
 
-    if (!live) {
-      void runQuery()
+  useEffect(() => {
+    if (skip || !live) {
       return
     }
-
     setState(previous => ({ ...previous, loading: true }))
-    const unsubscribe = subscribe<Data, Vars>(instance, operationName, variablesRef.current, {
+    const unsubscribe = subscribe<Data, Vars>(instance, operationName, variables, {
       next: result => {
         if (mountedRef.current) {
           setState({ data: result.data, source: result.source, loading: false, error: undefined })
@@ -105,7 +114,8 @@ export const useSqlConnectQuery = <Data = unknown, Vars extends Variables = Vari
       },
     })
     return unsubscribe
-  }, [instance, operationName, variablesKey, live, skip, runQuery])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [instance, operationName, variablesKey, live, skip])
 
   return { ...state, refetch: runQuery }
 }

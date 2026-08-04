@@ -10,7 +10,7 @@ This package is strict about its environment, deliberately: every requirement be
 | --- | --- | --- |
 | React Native | 0.85 | `spm_dependency` in podspecs, stable codegen event emitters |
 | Architecture | New Architecture | this package ships a TurboModule only |
-| `@react-native-firebase/app` | 26.1.0 | the version this package pins Firebase against |
+| `@react-native-firebase/app` | 24.0.0 | Firebase comes from whatever version this package installs, read out of its `sdkVersions`. Verified on a real device with 24.1.1 (Firebase 12.10.0) and with 26.1.0 (Firebase 12.17.0) |
 | iOS deployment target | 15.0 | required by the Apple Data Connect SDK |
 | Android `minSdk` | 23 | required by Firebase BoM 34 |
 

@@ -101,6 +101,10 @@ struct NormalizedError {
           },
         ]
       }
+      // `rawJsonData` is the only signal available here: `OperationFailureResponse.data`
+      // is private in the Apple SDK. Android additionally checks its decoded
+      // `data`, which is reached BY decoding `rawData`, so a decoded payload
+      // implies a raw one and the two platforms agree in practice.
       let hasData = response?.rawJsonData != nil
       let mapped = grpcCode(operationError.underlyingError)
         ?? classify(operationError.message ?? "")

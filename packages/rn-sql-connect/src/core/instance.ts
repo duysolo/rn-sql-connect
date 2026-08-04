@@ -56,6 +56,12 @@ const sameSettings = (a: SqlConnectSettings, b: SqlConnectSettings): boolean =>
  * identity both native SDKs use. Settings are locked in at creation time
  * because neither SDK lets you change them afterwards, so asking for the same
  * connector with different settings throws instead of silently ignoring them.
+ *
+ * On Apple platforms that lock outlives `terminate()`: the SDK caches instances
+ * by (app, connector) with settings left out of the key and offers no removal,
+ * so a rebuilt instance keeps the original settings. Native refuses the mismatch
+ * rather than pretending. Android's `close()` does tear down, but the behaviour
+ * is kept identical on both so the same code does not mean two different things.
  */
 export const getSqlConnect = (
   config: ConnectorConfig,
@@ -72,8 +78,10 @@ export const getSqlConnect = (
         code: 'invalid-argument',
         message:
           `getSqlConnect was called again for connector "${config.connector}" with different ` +
-          'settings. Data Connect locks settings when the instance is created; call terminate() ' +
-          'first if you really need to rebuild it.',
+          'settings. Settings are locked once an instance exists, and on Apple platforms they ' +
+          'are locked for the life of the process: terminate() does not help there, because the ' +
+          'underlying SDK caches instances by app and connector and cannot drop one. Restart the ' +
+          'app to apply different settings.',
       })
     }
     return existing.handle
@@ -166,7 +174,14 @@ export const connectSqlConnectEmulator = (
   }
 }
 
-/** Closes the native instance and forgets the handle. Mostly for tests and sign-out. */
+/**
+ * Closes the native instance and forgets the handle. Mostly for tests and sign-out.
+ *
+ * Does NOT clear the on-disk cache, and does not let you rebuild the instance
+ * with different settings on Apple platforms. Android releases the client;
+ * Apple's SDK has no teardown at all, so this drops the reference and nothing
+ * more. Anything cached stays on disk until the OS reclaims it.
+ */
 export const terminate = async (instance: SqlConnect): Promise<void> => {
   const state = instances.get(instance.key)
   if (!state) {
@@ -199,9 +214,20 @@ export type Diagnostics = {
  * Two questions this answers quickly: why a `@auth(USER)` operation returns
  * `unauthorized` (no signed-in user on the Firebase app this instance runs
  * under), and whether subscriptions are leaking across reloads.
+ *
+ * Configures first, on purpose. Native can only report `hasCurrentUser` once the
+ * instance exists, and configuration is lazy, so calling this before the first
+ * operation used to answer `false` for a signed-in user. That is the wrong
+ * answer at the worst moment, since this is what gets called while chasing an
+ * `unauthenticated`. Configuration is idempotent and does no network work.
+ *
+ * A failure to configure is swallowed rather than thrown: something already went
+ * wrong if diagnostics are being read, and the reply itself says
+ * `configured: false`.
  */
 export const getDiagnostics = async (instance: SqlConnect): Promise<Diagnostics> => {
   try {
+    await ensureConfigured(instance).catch(() => undefined)
     const raw = await getNativeModule().getDiagnostics(instance.key)
     return JSON.parse(raw) as Diagnostics
   } catch (error) {

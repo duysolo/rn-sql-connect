@@ -4,10 +4,12 @@ declare const globalThis: { RNSqlConnectDebug?: boolean } & Record<string, unkno
 
 const LINKING_ERROR =
   "The native module 'RnSqlConnect' could not be found.\n\n" +
-  '- iOS: run `pod install` in the ios directory, and make sure the app uses ' +
-  '`use_frameworks! :linkage => :dynamic` (see docs/ios-spm.md).\n' +
+  '- iOS: add `$RNFirebaseDisableSPM = true` to the Podfile, then run `pod install` in the ios ' +
+  'directory and rebuild. Static linkage is fine and is what this package is tested with; see ' +
+  'docs/internals/ios-architecture.md.\n' +
   '- Android: rebuild the app after installing the package.\n' +
-  '- Both: this package requires the New Architecture and does not work in Expo Go.'
+  '- Both: this package requires the New Architecture and does not work in Expo Go.\n' +
+  '- Running a JS bundle against an older native binary produces this too. Rebuild the app.'
 
 let cached: Spec | undefined
 

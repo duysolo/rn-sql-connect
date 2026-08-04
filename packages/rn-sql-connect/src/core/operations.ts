@@ -1,4 +1,4 @@
-import { errorFromPayload, errorFromRejection } from './errors'
+import { SqlConnectError, errorFromPayload, errorFromRejection } from './errors'
 import { ensureConfigured } from './instance'
 import { getNativeModule } from './native'
 import { serializeVariables } from './serialize'
@@ -60,6 +60,21 @@ export const executeQuery = async <Data = unknown, Vars extends Variables = Vari
   if (result.error) {
     throw errorFromPayload(result.error, operationName)
   }
+  // Native reports a cache miss as an error, so reaching here with nothing would
+  // mean the native contract changed. Checked anyway: the alternative is handing
+  // back `data: null` under a type that promises otherwise, which surfaces as a
+  // TypeError inside the caller's own code with nothing pointing back here.
+  if (result.data === null || result.data === undefined) {
+    throw new SqlConnectError({
+      code: fetchPolicy === QueryFetchPolicy.CACHE_ONLY ? 'cache-miss' : 'internal',
+      operationName,
+      message:
+        fetchPolicy === QueryFetchPolicy.CACHE_ONLY
+          ? `CACHE_ONLY found nothing cached for "${operationName}". Note that maxAge defaults ` +
+            'to 0, which caches responses but never serves them; raise it to read from the cache.'
+          : `"${operationName}" returned no data.`,
+    })
+  }
   return {
     data: result.data as Data,
     source: result.source === 'cache' ? 'cache' : 'server',
@@ -87,6 +102,13 @@ export const executeMutation = async <Data = unknown, Vars extends Variables = V
   const result = parseResult(raw, operationName)
   if (result.error) {
     throw errorFromPayload(result.error, operationName)
+  }
+  if (result.data === null || result.data === undefined) {
+    throw new SqlConnectError({
+      code: 'internal',
+      operationName,
+      message: `"${operationName}" returned no data.`,
+    })
   }
   return { data: result.data as Data }
 }

@@ -115,7 +115,13 @@ export const subscribe = <Data = unknown, Vars extends Variables = Variables>(
 ): Unsubscribe => {
   const variablesJson = serializeVariables(variables)
   const dedupeKey = `${instance.key}|${operationName}|${stableKey(variables ?? {})}`
-  const typedObserver = observer as SubscriptionObserver<unknown>
+  // Wrapped rather than stored directly. `observers` is a Set, so subscribing
+  // twice with the SAME observer object would add one entry, and either
+  // unsubscribe would then silence both callers.
+  const typedObserver: SubscriptionObserver<unknown> = {
+    next: result => observer.next?.(result as QueryResult<Data>),
+    error: error => observer.error?.(error),
+  }
 
   const existing = entriesByDedupeKey.get(dedupeKey)
   let entry: Entry
@@ -127,7 +133,7 @@ export const subscribe = <Data = unknown, Vars extends Variables = Variables>(
       const last = existing.last
       queueMicrotask(() => {
         if (existing.observers.has(typedObserver)) {
-          observer.next?.(last as QueryResult<Data>)
+          typedObserver.next?.(last)
         }
       })
     }

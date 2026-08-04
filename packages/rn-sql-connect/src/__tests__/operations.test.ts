@@ -139,6 +139,42 @@ describe('executeQuery', () => {
     })
   })
 
+  /**
+   * A cold cache used to come back as a successful result carrying `data: null`,
+   * under a type saying `data` is always present. Call sites then failed inside
+   * their own code with a TypeError that pointed nowhere near the cause. Apple
+   * platforms did that; Android threw instead, so the two disagreed as well.
+   */
+  it('reports a cold CACHE_ONLY read as cache-miss rather than a result with no data', async () => {
+    const dc = getSqlConnect(CONFIG)
+    native.__queryResults.set('ListNews', JSON.stringify({ data: null, source: 'cache' }))
+    await expect(
+      executeQuery(dc, 'ListNews', undefined, { fetchPolicy: QueryFetchPolicy.CACHE_ONLY }),
+    ).rejects.toMatchObject({ code: 'cache-miss', operationName: 'ListNews' })
+  })
+
+  it('mentions the maxAge default in the cache-miss message, since that is the usual cause', async () => {
+    const dc = getSqlConnect(CONFIG)
+    native.__queryResults.set('ListNews', JSON.stringify({ data: null, source: 'cache' }))
+    await expect(
+      executeQuery(dc, 'ListNews', undefined, { fetchPolicy: QueryFetchPolicy.CACHE_ONLY }),
+    ).rejects.toThrow(/maxAge defaults\s+to 0/)
+  })
+
+  it('treats missing data on a server read as internal, not as a cache miss', async () => {
+    const dc = getSqlConnect(CONFIG)
+    native.__queryResults.set('ListNews', JSON.stringify({ data: null, source: 'server' }))
+    await expect(
+      executeQuery(dc, 'ListNews', undefined, { fetchPolicy: QueryFetchPolicy.SERVER_ONLY }),
+    ).rejects.toMatchObject({ code: 'internal' })
+  })
+
+  it('rejects a mutation that comes back without data', async () => {
+    const dc = getSqlConnect(CONFIG)
+    native.__queryResults.set('CreateReview', JSON.stringify({ data: null }))
+    await expect(executeMutation(dc, 'CreateReview')).rejects.toMatchObject({ code: 'internal' })
+  })
+
   it('retries configure after it failed once, instead of caching the failure', async () => {
     const dc = getSqlConnect(CONFIG)
     native.__failNext = { code: 'internal', message: 'no firebase app' }

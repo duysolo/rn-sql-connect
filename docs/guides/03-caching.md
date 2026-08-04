@@ -40,7 +40,7 @@ The decision is not about performance, it is about what a stale read costs.
 | Policy | Behaviour |
 | --- | --- |
 | `PREFER_CACHE` | default. Serves cache if it is younger than `maxAge`, otherwise revalidates |
-| `CACHE_ONLY` | never touches the network. Returns whatever is cached, however old |
+| `CACHE_ONLY` | never touches the network. Returns whatever is cached, however old, and rejects with `cache-miss` when there is nothing |
 | `SERVER_ONLY` | always fetches, then refreshes the cache |
 
 ```ts
@@ -92,3 +92,19 @@ That has a privacy consequence worth reading before shipping: [auth, after sign-
 ---
 
 Next: [Realtime](04-realtime.md) | [Auth](05-auth.md) | [API reference](../reference/api.md#caching)
+
+## Settings are fixed once an instance exists
+
+`cacheSettings` is read when the instance is first created and never again. On Apple platforms that
+lock lasts for the life of the **process**: the SDK caches instances by app and connector, leaving
+settings out of the key, and offers no way to drop one. `terminate()` does not reopen it there, so
+asking for different settings afterwards is refused rather than silently ignored. Restart the app to
+change them.
+
+The practical consequence: decide `maxAge` before the first query runs, not later.
+
+## What `terminate()` does not do
+
+It does not clear the cache on disk. Android releases the client; Apple's SDK has no teardown at
+all, so `terminate()` drops the reference and nothing else. Anything already written stays on disk.
+If an app needs cached data gone at sign-out, this package cannot do it today.

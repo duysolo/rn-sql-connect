@@ -9,6 +9,14 @@ export type SqlConnectErrorCode =
   | 'unauthenticated'
   | 'unauthorized'
   | 'not-found'
+  /**
+   * CACHE_ONLY found nothing cached.
+   *
+   * Deliberately separate from `not-found`, which means the operation itself
+   * does not exist on the connector. Folding the two together would leave a
+   * `catch` unable to tell a typo in an operation name from a cold cache.
+   */
+  | 'cache-miss'
   | 'invalid-argument'
   | 'partial-error'
   | 'unavailable'
@@ -65,6 +73,7 @@ const KNOWN_CODES = new Set<string>([
   'unauthenticated',
   'unauthorized',
   'not-found',
+  'cache-miss',
   'invalid-argument',
   'partial-error',
   'unavailable',

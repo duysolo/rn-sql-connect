@@ -22,7 +22,7 @@ Running `firebase/data-connect` inside React Native works, but it costs you:
 | --- | --- | --- |
 | React Native | **0.85** | `spm_dependency` and stable codegen event emitters |
 | Architecture | **New Architecture** | This package ships a TurboModule only |
-| `@react-native-firebase/app` | **26.1.0** | The version this is built and tested against. Older releases resolve Firebase through CocoaPods too, which is what this package needs, but they are untested here |
+| `@react-native-firebase/app` | **24.0.0** | Firebase is resolved through CocoaPods, which every version of react-native-firebase supports. Verified on a real device against 24.1.1 (Firebase 12.10.0) and 26.1.0 (Firebase 12.17.0) |
 | iOS Podfile | `$RNFirebaseDisableSPM = true` | See below |
 | iOS deployment target | 15.0 | Required by `data-connect-ios-sdk` |
 | Android `minSdk` | 23 | Required by Firebase BoM 34 |
