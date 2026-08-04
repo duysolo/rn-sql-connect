@@ -2,6 +2,17 @@
 
 Everything exported from `rn-sql-connect` and `rn-sql-connect/react`. The API is modular, in the style of `@react-native-firebase` v22 and later: free functions taking an instance, no namespaces.
 
+
+| Group | Exports |
+| --- | --- |
+| Instances | [`getSqlConnect`](#getsqlconnectconfig-settings), [`connectSqlConnectEmulator`](#connectsqlconnectemulatorinstance-options), [`terminate`](#terminateinstance), [`getDiagnostics`](#getdiagnosticsinstance) |
+| Operations | [`executeQuery`](#executequeryinstance-operationname-variables-options), [`executeMutation`](#executemutationinstance-operationname-variables), [variables](#variables) |
+| Caching | [`cacheSettings`](#caching), [the `maxAge` trap](#the-trap-in-maxage), [fetch policies](#fetch-policies) |
+| Realtime | [`subscribe`](#subscribeinstance-operationname-variables-observer), [server-side requirements](#server-side-requirements) |
+| Errors | [`SqlConnectError` and every code](#errors) |
+| React | [`useSqlConnectQuery`](#react) |
+| Reference | [types](#type-reference), [how values cross the bridge](#how-values-cross-the-bridge) |
+
 ## Instances
 
 ### `getSqlConnect(config, settings?)`
@@ -46,9 +57,11 @@ Leave `host` unset to get each platform's own default: `10.0.2.2` on Android, `1
 await terminate(dc)
 ```
 
-Closes the native instance, cancels its subscriptions, and forgets the handle. Mostly useful in tests and when tearing down a signed-in session. A handle that was never used resolves without touching native.
+Closes the native instance, cancels its subscriptions, and forgets the handle. A handle that was never used resolves without touching native.
 
 Using a handle after terminating it throws `not-configured`.
+
+**It does not clear the cache.** With `storage: 'persistent'` the cached responses stay on disk and are available to the next instance, including after an app restart and after a different user signs in. If that matters, see [after sign-out](recipes.md#after-sign-out-the-cache-is-still-there).
 
 ### `getDiagnostics(instance)`
 
@@ -68,7 +81,11 @@ type Diagnostics = {
 }
 ```
 
-Reports what the **native** side sees. Two questions it answers immediately: why a `USER`-level operation returns `unauthorized` (usually `hasCurrentUser: false`), and whether subscriptions are leaking across reloads (`activeSubscriptions` should return to zero).
+Reports what the **native** side sees, which is the point: it answers questions JavaScript cannot.
+
+- A `USER`-level operation failing with `unauthenticated` and `hasCurrentUser: false` means the sign-in never reached the Firebase app this instance uses.
+- The same failure with `hasCurrentUser: true` and the right uid means the server refused the call, so the `@auth` rule is the thing to look at, not the client.
+- `activeSubscriptions` should return to zero after unsubscribing. If it does not, subscriptions are leaking across reloads.
 
 ## Operations
 
@@ -130,6 +147,8 @@ const dc = getSqlConnect(config, {
 | `maxAge` | seconds, or `'30s'`, `'5m'`, `'1h30m'` | `0` |
 
 `maxAge` accepts the same syntax as `connector.yaml`, so a policy can be copied between the two without translating units.
+
+`persistent` means on disk and across app restarts. Nothing clears it automatically, not even `terminate` or signing out, so treat it as a device-level cache when deciding what to put behind it.
 
 ### The trap in `maxAge`
 

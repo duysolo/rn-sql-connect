@@ -22,6 +22,13 @@ You also need a Data Connect service to talk to. If you do not have one yet, wor
 npm install rn-sql-connect @react-native-firebase/app
 ```
 
+If Firebase is not set up in this app yet, do that first, following the [react-native-firebase installation guide](https://rnfirebase.io/). Concretely you need:
+
+- `android/app/google-services.json`, and the `com.google.gms.google-services` Gradle plugin applied.
+- `ios/GoogleService-Info.plist`, **added to the app target in Xcode**, not merely dropped in the folder. Xcode does not warn about the difference and `FirebaseApp.configure()` aborts at launch instead.
+
+Everything below assumes those are in place. This package does not read them itself; it uses whatever `FirebaseApp` react-native-firebase configured.
+
 ### Android
 
 Nothing to do. Autolinking picks up the module and the Firebase dependency comes from the BoM.

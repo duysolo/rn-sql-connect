@@ -22,13 +22,20 @@ Running `firebase/data-connect` inside React Native works, but it costs you:
 | --- | --- | --- |
 | React Native | **0.85** | `spm_dependency` and stable codegen event emitters |
 | Architecture | **New Architecture** | This package ships a TurboModule only |
-| `@react-native-firebase/app` | **26.1.0** | First version that resolves Firebase through SPM |
+| `@react-native-firebase/app` | **26.1.0** | The version this is built and tested against. Older releases resolve Firebase through CocoaPods too, which is what this package needs, but they are untested here |
 | iOS Podfile | `$RNFirebaseDisableSPM = true` | See below |
 | iOS deployment target | 15.0 | Required by `data-connect-ios-sdk` |
 | Android `minSdk` | 23 | Required by Firebase BoM 34 |
 | firebase-tools (codegen only) | 15.14.0 | Realtime-capable SDK generation |
 
-**iOS needs react-native-firebase in CocoaPods mode.** `FirebaseDataConnect` is distributed through Swift Package Manager only, and SwiftPM links a private copy of `FirebaseCore` into every framework that depends on it, which would leave Data Connect unable to see the Firebase instance react-native-firebase configured. So the Apple SDK is vendored into this package and Firebase comes from CocoaPods, the same copy react-native-firebase uses. The podspec refuses to install if that is not the case. Full reasoning in [docs/ios-spm.md](docs/ios-spm.md), confirmed upstream in [#9140](https://github.com/invertase/react-native-firebase/issues/9140).
+**iOS needs react-native-firebase in CocoaPods mode.** In short:
+
+- `FirebaseDataConnect` is distributed through Swift Package Manager only.
+- SwiftPM links a private copy of `FirebaseCore` into every framework that depends on it, so Data Connect would not see the Firebase instance react-native-firebase configured, and `@auth(USER)` operations would fail.
+- So the Apple SDK is vendored into this package and Firebase comes from CocoaPods, the same copy react-native-firebase uses.
+- `pod install` refuses to proceed if that is not the case, rather than letting it fail at runtime.
+
+Full reasoning in [docs/ios-spm.md](docs/ios-spm.md), confirmed upstream in [invertase/react-native-firebase#9140](https://github.com/invertase/react-native-firebase/issues/9140).
 
 ## Documentation
 

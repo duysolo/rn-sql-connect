@@ -111,7 +111,7 @@ On Android, `adb reverse tcp:9399 tcp:9399` also works and is what the smoke run
 | --- | --- |
 | int64 fidelity | The reason this bridge passes JSON text. A bridge map would turn `9007199254740993` into `9007199254740992` and nobody would notice until an invoice was wrong. |
 | nested Any scalar | Exercises the runtime-built serial descriptor on Android, including an explicit `null` inside an array. |
-| CACHE_ONLY returning `source: cache` | Proves the persistent cache is configured, which is one of the two reasons for going native. |
+| CACHE_ONLY returning `source: cache` | Proves the on-disk cache is configured, which is one of the two reasons for going native. |
 | realtime subscription | Proves the stream, the JS-side dedupe, and the event bridge. Needs `@refresh` on the operation for anything beyond a primary-key lookup. |
 | error mapping | Proves the platform-specific error taxonomy maps onto the shared codes. |
 | timestamp and date fidelity | Timestamps are the most common non-trivial scalar in a real schema. The check compares the instant rather than the text, since the server normalises the format, so a timezone bug still fails. |

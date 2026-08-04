@@ -92,7 +92,7 @@ The Firebase version is read from react-native-firebase's own `package.json` at 
 
 ## Verified
 
-The example app runs the full smoke suite on a simulator against the Data Connect emulator, 9 of 9 passing, including a realtime subscription, the on-disk cache, and Int64 fidelity. See [local-testing.md](local-testing.md).
+The example app runs the full smoke suite on a simulator against the Data Connect emulator, 16 of 16 passing, including auth-gated operations, a realtime subscription, the on-disk cache, and every scalar type. See [local-testing.md](local-testing.md).
 
 ## When this can be undone
 

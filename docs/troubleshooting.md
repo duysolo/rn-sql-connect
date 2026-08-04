@@ -2,6 +2,25 @@
 
 Every entry here is a failure that actually happened while building or testing this package, with the message you would see and what it means.
 
+
+## Find your symptom
+
+| What you see | Section |
+| --- | --- |
+| `pod install` fails mentioning Swift Package Manager | [pod install refuses](#pod-install-refuses-react-native-firebase-is-using-swift-package-manager) |
+| `The native module 'RnSqlConnect' could not be found` | [native module not found](#the-native-module-rnsqlconnect-could-not-be-found) |
+| `Could not find @react-native/gradle-plugin` | [gradle plugin](#could-not-find-react-nativegradle-plugin) |
+| `This file must be compiled as Obj-C++` | [Obj-C++](#ios-build-fails-with-this-file-must-be-compiled-as-obj-c) |
+| `not-configured` on every call | [not configured](#not-configured-firebase-app-default-is-not-configured) |
+| App crashes at launch, API key length | [not configured](#not-configured-firebase-app-default-is-not-configured) |
+| `Class FIRApp is implemented in both` | [duplicate FIRApp](#duplicate-firapp-warnings-in-the-log) |
+| `unauthenticated` while signed in | [unauthenticated](#unauthenticated-on-an-operation-while-signed-in) |
+| Data is older than the database | [stale data](#a-query-returns-stale-data) |
+| Another user's data after switching accounts | [cache after sign-out](#the-previous-users-data-appears-after-signing-in-as-someone-else) |
+| A subscription only fires once | [subscription silent](#a-subscription-never-fires-after-the-first-value) |
+| Large numbers are off by one | [numbers wrong](#numbers-come-back-subtly-wrong) |
+| Emulator port taken, or rejects an operation | [emulator](#emulator) |
+
 ## Install and build
 
 ### `pod install` refuses: react-native-firebase is using Swift Package Manager
@@ -89,6 +108,12 @@ await executeQuery(dc, 'GetAppConfig', undefined, {
 ```
 
 This exact shape caused a real incident before this package existed: a config version was read from an in-memory cache with no expiry, so a screen kept showing the previous version until the app restarted, and the whole refresh chain that depended on that version stopped silently.
+
+### The previous user's data appears after signing in as someone else
+
+The on-disk cache is not cleared by signing out, nor by `terminate()`. A `CACHE_ONLY` read, or a `PREFER_CACHE` read inside `maxAge`, can still serve rows fetched by the previous user on that device.
+
+The server is not the problem here: `@auth` still refuses the request. The exposure is the local cache. Read user-scoped data with `SERVER_ONLY`, or keep it on an instance configured with `storage: 'memory'`. See [recipes.md](recipes.md#after-sign-out-the-cache-is-still-there).
 
 ### `CACHE_ONLY` throws or returns nothing
 

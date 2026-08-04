@@ -2,6 +2,16 @@
 
 Patterns that come up in a real app, and the reasoning behind each one.
 
+- [Choosing a fetch policy](#choosing-a-fetch-policy)
+- [Realtime that actually pushes](#realtime-that-actually-pushes)
+- [Auth](#auth)
+- [Error handling](#error-handling)
+- [Multiple connectors](#multiple-connectors)
+- [A secondary Firebase app](#a-secondary-firebase-app)
+- [Migrating off the JavaScript web SDK](#migrating-off-the-javascript-web-sdk)
+- [Testing app code that uses this package](#testing-app-code-that-uses-this-package)
+- [Things this package will not do for you](#things-this-package-will-not-do-for-you)
+
 ## Choosing a fetch policy
 
 The decision is not about performance, it is about what a stale read costs.
@@ -109,14 +119,32 @@ If anonymous callers should be allowed, the operation has to say so:
 query GetMyDraft @auth(level: USER_ANON) { ... }
 ```
 
-### After sign-out
+### After sign-out, the cache is still there
 
-Cached responses do not disappear when the user signs out. If a screen could show the previous user's data, clear it yourself, either by terminating the instance or by reading with `SERVER_ONLY` on the paths that matter:
+This one is worth being precise about, because getting it wrong shows one user another user's data.
+
+**`terminate()` does not clear the cache.** It closes the native instance and cancels its subscriptions, nothing more. With the default `storage: 'persistent'` the cached responses stay on disk, survive an app restart, and are still there for the next person who signs in on that device.
+
+So do not rely on sign-out to protect user-scoped data. Pick one of these instead:
 
 ```ts
-await signOut(getAuth())
-await terminate(dc)          // next getSqlConnect starts clean
+// Option 1, the simplest: read user-scoped data from the server.
+await executeQuery(dc, 'GetMyProfile', undefined, {
+  fetchPolicy: QueryFetchPolicy.SERVER_ONLY,
+})
 ```
+
+```ts
+// Option 2: keep user-scoped operations on an instance that caches in memory
+// only, so nothing outlives the process.
+export const userScoped = getSqlConnect(config, {
+  cacheSettings: { storage: 'memory' },
+})
+```
+
+Note that option 2 needs a **separate connector** if the same connector also serves public data you want cached on disk, since cache settings are per instance and instances are keyed by connector.
+
+Either way, `@auth` still protects the server: a signed-out caller cannot fetch another user's rows. The exposure is limited to what is already cached on that device, and only through `CACHE_ONLY` or a `PREFER_CACHE` read inside `maxAge`. That is a small window, but it is not zero, and it is the kind of thing that is much cheaper to get right now than to explain later.
 
 ### Diagnosing `unauthorized`
 
