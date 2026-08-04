@@ -24,7 +24,7 @@ Everything here is enforced by CI already, so this is about not publishing from 
 
 ```sh
 git status                      # clean, on main, pushed
-npm test                        # 67 tests
+npm test                        # 72 tests
 npm run lint
 npm run typecheck
 npm run vendor:check            # vendored Apple SDK matches its pinned tag
@@ -111,6 +111,7 @@ Semver, with one repo-specific rule: **a change of the vendored Apple SDK versio
 | Change | Bump |
 | --- | --- |
 | JavaScript-only fix | patch |
+| a new `SqlConnectErrorCode`, or any change to what an existing code means | minor - a consumer switching exhaustively on the union stops compiling, and one branching on a code may take a different branch |
 | new option or export, backwards compatible | minor |
 | vendored SDK version, Firebase BoM, minimum React Native | minor at least |
 | a required Podfile or Gradle change for consumers | major |
