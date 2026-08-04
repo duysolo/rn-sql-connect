@@ -2,7 +2,7 @@
 
 React Native SDK for **Firebase SQL Connect** (Data Connect) built on the **native** Android and Apple SDKs, not on the JavaScript web SDK.
 
-> Status: pre-release. The JavaScript layer and the code generator are covered by tests. The native layer compiles against the documented SDK APIs but has not yet been run on a device; see [Verification status](#verification-status).
+> Status: pre-release. **Android works end to end.** iOS builds but cannot share a Firebase instance with react-native-firebase under Swift Package Manager, an upstream packaging limitation confirmed in [#9140](https://github.com/invertase/react-native-firebase/issues/9140); see [Verification status](#verification-status).
 
 ## Why
 
@@ -28,7 +28,7 @@ Running `firebase/data-connect` inside React Native works, but it costs you:
 | Android `minSdk` | 23 | Required by Firebase BoM 34 |
 | firebase-tools (codegen only) | 15.14.0 | Realtime-capable SDK generation |
 
-**iOS linkage is not a preference.** `FirebaseDataConnect` ships through Swift Package Manager only, and firebase-ios-sdk's Swift Package declares every product as a dynamic library. Under `:linkage => :static` each pod embeds its own copy of Firebase and the link fails with duplicate symbols. The podspec fails during `pod install` with an explanation rather than letting you read linker output. Details in [docs/ios-spm.md](docs/ios-spm.md).
+**iOS is not usable yet, and the reason is packaging, not this code.** `FirebaseDataConnect` ships through Swift Package Manager only, and firebase-ios-sdk declares its products with the automatic type rather than `.library(type: .dynamic)`. Swift Package Manager therefore links a private copy of `FirebaseCore` into every framework that depends on it, so a pod cannot share the Firebase instance that react-native-firebase configures. Confirmed by a react-native-firebase maintainer in [#9140](https://github.com/invertase/react-native-firebase/issues/9140). Details and the path forward in [docs/ios-spm.md](docs/ios-spm.md).
 
 ## Install
 
