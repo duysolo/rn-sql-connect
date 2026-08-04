@@ -31,7 +31,26 @@ npm run vendor:check            # vendored Apple SDK matches its pinned tag
 node scripts/codegen-roundtrip.mjs
 ```
 
-Then confirm what would actually ship:
+Then confirm what would actually ship. This packs both packages for real,
+inspects the tarballs, installs the generator into a scratch project and runs
+its CLI:
+
+```sh
+npm run verify:package
+```
+
+```
+ok   rn-sql-connect@0.1.0, 301 files
+ok   rn-sql-connect-codegen@0.1.0, 24 files
+```
+
+It exists because `npm publish` warns that it "auto-corrected" the `bin` field
+and removed it, which reads like the CLI is about to ship broken. It is not:
+npm installs from the tarball, and the tarball keeps the field. Checking the
+artefact settles that question in three seconds instead of by publishing and
+hoping.
+
+For the file list itself:
 
 ```sh
 cd packages/rn-sql-connect && npm pack --dry-run
@@ -69,6 +88,14 @@ While the package is pre-release, publish under a tag so nobody installs it by a
 
 ```sh
 npm publish --tag next
+```
+
+npm asks for a one-time password when the account has two-factor authentication
+on. The browser flow needs an interactive terminal, so if the publish is running
+anywhere else, pass the code directly:
+
+```sh
+npm publish --tag next --otp=123456
 ```
 
 Consumers then opt in with `npm install rn-sql-connect@next`, and `npm install rn-sql-connect` keeps resolving to the last stable release. Promote later:

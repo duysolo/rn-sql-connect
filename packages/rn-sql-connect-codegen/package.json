@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Generates typed rn-sql-connect wrappers from a Firebase-generated Data Connect JavaScript SDK",
   "bin": {
-    "rn-sql-connect-codegen": "./dist/cli.js"
+    "rn-sql-connect-codegen": "dist/cli.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
