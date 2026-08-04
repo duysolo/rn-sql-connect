@@ -18,7 +18,9 @@
     "emulator": "firebase emulators:start --only dataconnect,auth --project demo-rn-sql-connect --config example/firebase.json",
     "example:android": "npm run android --workspace rn-sql-connect-example",
     "example:ios": "npm run ios --workspace rn-sql-connect-example",
-    "example:start": "npm run start --workspace rn-sql-connect-example"
+    "example:start": "npm run start --workspace rn-sql-connect-example",
+    "vendor:sync": "node scripts/sync-vendored-dataconnect.mjs",
+    "vendor:check": "node scripts/sync-vendored-dataconnect.mjs --check"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -1,114 +1,45 @@
-# iOS: why Swift Package Manager, and why dynamic linkage
+# iOS: why the Apple SDK is vendored
 
 ## The short version
 
-`FirebaseDataConnect` has no CocoaPods spec and will never get one. It ships from a separate repository, [firebase/data-connect-ios-sdk](https://github.com/firebase/data-connect-ios-sdk), through Swift Package Manager only. Firebase stops publishing new versions to CocoaPods in **October 2026**, and the CocoaPods specs repo becomes read-only in **December 2026**.
+`FirebaseDataConnect` has no CocoaPods spec and will never get one. It ships from [firebase/data-connect-ios-sdk](https://github.com/firebase/data-connect-ios-sdk) through Swift Package Manager only, and Firebase stops publishing to CocoaPods in October 2026.
 
-That leaves exactly one working configuration for an app that uses both `@react-native-firebase` and this package:
+Consuming it through Swift Package Manager does not work in a React Native app, for a reason that has nothing to do with this package. So the Apple SDK sources are **vendored** into `ios/vendor/FirebaseDataConnect`, Firebase comes from CocoaPods, and only `grpc-swift` stays on Swift Package Manager.
+
+What that requires of an app:
 
 ```ruby
-# ios/Podfile
-use_frameworks! :linkage => :dynamic
+# ios/Podfile, before any target block
+$RNFirebaseDisableSPM = true
+$RNFirebaseAsStaticFramework = true
 ```
 
-with `@react-native-firebase/app` **26.1.0 or newer**, which resolves Firebase through SPM by default.
+Static linkage is fine. Dynamic works too. What matters is that react-native-firebase resolves Firebase through CocoaPods, so that both packages use the same copy. The podspec refuses to install otherwise.
 
-## Why static linkage cannot work
+## Why Swift Package Manager does not work here
 
-firebase-ios-sdk's `Package.swift` declares every product as `.library(type: .dynamic)`. Under `use_frameworks! :linkage => :static`, each pod that resolves Firebase through SPM statically embeds its own copy of those frameworks. The result is duplicate symbols at link time.
+`firebase-ios-sdk` declares its products with the automatic type:
 
-react-native-firebase reached the same conclusion and raises during `pod install` instead of letting the build fail later. This package does the same, in `RnSqlConnect.podspec`.
-
-There is no combination of build settings that avoids this. The alternatives are:
-
-1. Move the app to dynamic linkage. This is the supported path, and it is where every Firebase-using iOS app has to end up anyway.
-2. Keep CocoaPods by setting `$RNFirebaseDisableSPM = true`. Firebase then comes from pods, but `FirebaseDataConnect` is unavailable, so **rn-sql-connect cannot be installed on iOS in that mode**.
-
-## How the pieces fit together
-
-```
-Pods project
-├── RNFBApp        -> SPM: firebase-ios-sdk (FirebaseCore, FirebaseInstallations)
-├── RNFBAuth       -> SPM: firebase-ios-sdk (FirebaseAuth)
-└── RnSqlConnect   -> SPM: data-connect-ios-sdk (FirebaseDataConnect)
-                              └── depends on firebase-ios-sdk 11.5.0 ..< 13.0.0
+```swift
+.library(name: "FirebaseCore", targets: ["FirebaseCore"]),
 ```
 
-Swift Package Manager resolves `firebase-ios-sdk` once for the whole graph, so both packages share one copy. That shared copy is what makes auth and App Check work without any bridging: the Data Connect SDK reads the current user from the same `FirebaseApp` that react-native-firebase configured.
-
-This package pins Firebase through react-native-firebase's own `firebase_dependency()` helper rather than declaring its own version, so the version can only ever come from one place.
-
-## Embedding
-
-React Native's `spm_dependency` adds package products to pod targets but does not teach the app target to embed the resulting dynamic frameworks. react-native-firebase installs a build phase called `[RNFB] Embed Firebase SPM Frameworks` that copies every `*.framework` from the SPM build directory, matched by pattern rather than by name, so `FirebaseDataConnect.framework` is covered too.
-
-Two things to verify when you first build:
-
-1. `xcodebuild archive`, not just a Debug run. The Archive action puts SPM products in a different directory, and a missing framework only shows up as a crash on launch of a TestFlight build.
-2. `SourcePackages/workspace-state.json` should list `firebase-ios-sdk` exactly once.
-
-## Migrating an app that is on static linkage today
-
-Do it in two steps, so each one has a single variable:
-
-1. Upgrade `@react-native-firebase/*` to 26.1.0 while keeping CocoaPods and static linkage (`$RNFirebaseDisableSPM = true`). React Native Firebase 26 moved its modules to TurboModules, which is the risky part; isolate it.
-2. Remove `$RNFirebaseDisableSPM`, switch to `:linkage => :dynamic`, and add rn-sql-connect.
-
-Things to look at during step 2:
-
-- Pods that are forced to static in a `pre_install` hook. Mixing a static library into a dynamic-frameworks target is where CocoaPods reports "transitive dependencies that include statically linked binaries".
-- `$RNFirebaseAsStaticFramework`. It is meaningless once Firebase is no longer a pod; remove it.
-- `RCT_USE_PREBUILT_RNCORE`. If it was disabled because react-native-firebase could not resolve `#import <React/...>`, try re-enabling it after the upgrade. Prebuilt React collapses around 65 React pods into one xcframework, which matters a lot when every pod is a dynamic framework.
-- Cold start time and IPA size, measured before and after on the oldest device you support.
-
-## Known issue: FirebaseCore is linked more than once (blocks iOS today)
-
-Status: **iOS is not usable yet**. Android is unaffected and fully working.
-
-### What happens
-
-The example app builds and launches, the TurboModule loads, and the Swift code runs. Every Data Connect call then fails with:
-
-```
-not-configured: Firebase app "[DEFAULT]" is not configured.
+```sh
+$ grep -c 'type: .dynamic' Package.swift   # firebase-ios-sdk 12.17.0
+0
 ```
 
-even though `AppDelegate` calls `FirebaseApp.configure()` at launch and the crash you get from a malformed `GoogleService-Info.plist` proves that call really runs.
-
-### Why
-
-The runtime says it plainly:
+Swift Package Manager links an automatic library product **statically into every binary that depends on it**. In a React Native app each pod is its own framework, so every pod that references a Firebase product gets a private copy of `FirebaseCore`. The Objective-C runtime keeps one `FIRApp` class and warns about the rest:
 
 ```
 objc[94618]: Class FIRApp is implemented in both
   .../PackageFrameworks/FirebaseCore_..._PackageProduct.framework
   and .../RnSqlConnect.framework
-objc[94618]: Class FIRApp is implemented in both
-  .../PackageFrameworks/FirebaseCore_..._PackageProduct.framework
-  and .../RNFBApp.framework
 ```
 
-Three copies of FirebaseCore end up in one process:
+Each copy carries its own registry of configured apps, so `FirebaseApp.configure()` at launch is invisible to the copy this package would run against, and every call fails with `not-configured`.
 
-1. the Swift Package product built as a dynamic framework,
-2. a static copy inside `RNFBApp.framework`,
-3. a static copy inside `RnSqlConnect.framework`.
-
-Xcode links a Swift Package **library** product statically into each binary that depends on it, so every pod that pulls a Firebase product gets its own copy. The Objective-C runtime keeps one `FIRApp` class and warns about the rest, but each copy carries its own file-scope state, including the registry of configured apps. `FirebaseApp.configure()` therefore registers into one copy while `FirebaseApp.app()` reads another and finds nothing.
-
-Removing `firebase_dependency(...)` from this package's podspec, which is where it stands now, drops the redundant declaration but does not fix it: `FirebaseDataConnect` itself depends on `FirebaseCore`, so the static copy still lands in `RnSqlConnect.framework`.
-
-### Why this matters beyond the error message
-
-Even if the copy this package uses were configured on its own, `FirebaseAuth` would be split the same way. Data Connect would read a signed-in user from a copy that react-native-firebase never signed into, and `@auth(USER)` operations would fail while `@auth(PUBLIC)` ones worked. That failure mode is quiet, which is worse than the loud error we have now. So this package deliberately does **not** work around the problem by configuring its own copy.
-
-### Where the fix belongs
-
-Upstream, in react-native-firebase's SPM integration, which shipped in 26.1.0 on 2026-08-03, the same day this was found. Firebase products need to reach every pod as the shared dynamic framework rather than as a per-pod static copy.
-
-Reported with this reproduction: **[invertase/react-native-firebase#9140](https://github.com/invertase/react-native-firebase/issues/9140)**.
-
-A react-native-firebase maintainer confirmed the diagnosis and answered the question that decides this package's iOS strategy: **with today's packaging there is no way to share one FirebaseCore between react-native-firebase in SPM mode and another pod.**
+A react-native-firebase maintainer confirmed this in [invertase/react-native-firebase#9140](https://github.com/invertase/react-native-firebase/issues/9140) and ruled out the workarounds:
 
 | react-native-firebase | Other native dependency | Shared FirebaseCore |
 | --- | --- | --- |
@@ -116,25 +47,53 @@ A react-native-firebase maintainer confirmed the diagnosis and answered the ques
 | SPM | CocoaPods Firebase pods | No, dual resolution |
 | CocoaPods (`$RNFirebaseDisableSPM = true`) | CocoaPods Firebase pods | **Yes** |
 
-They also confirmed that linking the product onto the app target, which was the helper this package proposed, does not help: it exists so the app target can call `FirebaseApp.configure()`, not to give pods a shared instance. Their view is that the long-term fix belongs in firebase-ios-sdk, whose products would need to be declared `.library(type: .dynamic)`.
+Linking the product onto the app target, which this package tried first, does not help either: that exists so the app target can call `FirebaseApp.configure()`, not to give pods a shared instance. Building this pod as a static framework does not help either, it just moves the problem and forces the pod to mirror the whole transitive Swift Package closure by hand.
 
-Two workarounds were tried here and neither holds up:
+The long-term fix is upstream in firebase-ios-sdk, whose products would need to be declared `.library(type: .dynamic)`.
 
-- Building this pod as a static framework so it merges into the app binary. It then has to link the whole transitive Swift Package closure itself, starting with `GULAppEnvironmentUtil`, which is not something a consumer should have to mirror by hand.
-- Adding `FirebaseDataConnect` to the app target from the example's `post_install`, mirroring what `rnfirebase_add_spm_core_to_app_target` does for FirebaseCore. This still failed to link, with missing gRPC symbols.
+## What vendoring buys, and what it costs
 
-### What this package does instead
+Sharing one Firebase instance is not a nicety. It is what makes `@auth(USER)` operations work at all: Data Connect reads the signed-in user and the App Check token off the `FirebaseApp` that react-native-firebase configured. A private copy would leave queries working while auth quietly failed, which is the worst failure shape available.
 
-The bottom row of that table is the only configuration that shares a Firebase instance, so iOS moves to it: **vendor the `FirebaseDataConnect` Swift sources into this pod** (Apache-2.0, attribution kept) and take `FirebaseCore`, `FirebaseAuth` and `FirebaseAppCheckInterop` from CocoaPods, the same copies react-native-firebase uses. Only `grpc-swift` stays on Swift Package Manager, which is safe because nothing else in the graph pulls it.
+The cost is drift. The vendored copy is pinned to a tag and CI enforces it:
 
-This was written up in the original plan as the fallback, with a note that it had a short shelf life because Firebase stops publishing pods in October 2026. That note still stands, but the ordering has flipped: it is now the only working path, not the fallback.
+```sh
+npm run vendor:check        # fails if the tree differs from the pinned tag plus recorded patches
+npm run vendor:sync         # refresh to the pinned tag
+node scripts/sync-vendored-dataconnect.mjs --tag 11.13.0   # move to a new tag
+```
 
-Consequences to accept:
+One patch is applied on top of upstream and asserted by the sync script, so an upstream change that invalidates it fails loudly rather than turning into a confusing compile error:
 
-- The vendored sources have to be synced when `data-connect-ios-sdk` releases, so the version is pinned and CI watches for new tags.
-- When firebase-ios-sdk ships dynamic products, the SPM route becomes viable again and this can be revisited.
+| File | Patch | Why |
+| --- | --- | --- |
+| `Internal/Version.swift` | `import GoogleUtilities_Environment` becomes a `canImport` pair | Swift Package Manager and CocoaPods disagree on the module name for the same code |
 
-Status right now:
+The vendored sources keep their Apache-2.0 headers and the upstream `LICENSE` file.
 
-- **Android**: fully working, no action needed.
-- **iOS**: blocked until the vendoring work lands. Do not ship the SPM version.
+## Dependency map
+
+```
+RnSqlConnect (pod)
+├── ios/vendor/FirebaseDataConnect   vendored, pinned to 11.12.5
+├── CocoaPods
+│   ├── Firebase/CoreOnly            same copy react-native-firebase uses
+│   ├── FirebaseAuth
+│   ├── FirebaseAppCheckInterop
+│   ├── FirebaseCoreExtension
+│   └── GoogleUtilities/Environment
+└── Swift Package Manager
+    └── grpc-swift 1.27.1            no CocoaPods distribution, nothing else links it
+```
+
+`SQLite3` comes from the system, so the on-disk cache needs no dependency of its own.
+
+The Firebase version is read from react-native-firebase's own `package.json` at `pod install` time, so it can only ever come from one place. `$FirebaseSDKVersion` overrides it, the same escape hatch react-native-firebase documents.
+
+## Verified
+
+The example app runs the full smoke suite on a simulator against the Data Connect emulator, 9 of 9 passing, including a realtime subscription, the on-disk cache, and Int64 fidelity. See [local-testing.md](local-testing.md).
+
+## When this can be undone
+
+If firebase-ios-sdk ever declares dynamic products, the Swift Package route becomes viable and the vendored copy can be dropped. Until then, note that Firebase stops publishing to CocoaPods in October 2026: existing pod versions stay installable, so this keeps working, but the Firebase side stops receiving updates at that point. That is the deadline for revisiting this, not a reason to avoid it today.

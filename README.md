@@ -2,7 +2,7 @@
 
 React Native SDK for **Firebase SQL Connect** (Data Connect) built on the **native** Android and Apple SDKs, not on the JavaScript web SDK.
 
-> Status: pre-release. **Android works end to end.** iOS builds but cannot share a Firebase instance with react-native-firebase under Swift Package Manager, an upstream packaging limitation confirmed in [#9140](https://github.com/invertase/react-native-firebase/issues/9140); see [Verification status](#verification-status).
+> Status: pre-release, **working end to end on both platforms**: 9 of 9 smoke steps pass on an Android emulator and an iOS simulator against the Data Connect emulator. See [Verification status](#verification-status).
 
 ## Why
 
@@ -23,12 +23,12 @@ Running `firebase/data-connect` inside React Native works, but it costs you:
 | React Native | **0.85** | `spm_dependency` and stable codegen event emitters |
 | Architecture | **New Architecture** | This package ships a TurboModule only |
 | `@react-native-firebase/app` | **26.1.0** | First version that resolves Firebase through SPM |
-| iOS Podfile | `use_frameworks! :linkage => :dynamic` | See below |
+| iOS Podfile | `$RNFirebaseDisableSPM = true` | See below |
 | iOS deployment target | 15.0 | Required by `data-connect-ios-sdk` |
 | Android `minSdk` | 23 | Required by Firebase BoM 34 |
 | firebase-tools (codegen only) | 15.14.0 | Realtime-capable SDK generation |
 
-**iOS is not usable yet, and the reason is packaging, not this code.** `FirebaseDataConnect` ships through Swift Package Manager only, and firebase-ios-sdk declares its products with the automatic type rather than `.library(type: .dynamic)`. Swift Package Manager therefore links a private copy of `FirebaseCore` into every framework that depends on it, so a pod cannot share the Firebase instance that react-native-firebase configures. Confirmed by a react-native-firebase maintainer in [#9140](https://github.com/invertase/react-native-firebase/issues/9140). Details and the path forward in [docs/ios-spm.md](docs/ios-spm.md).
+**iOS needs react-native-firebase in CocoaPods mode.** `FirebaseDataConnect` is distributed through Swift Package Manager only, and SwiftPM links a private copy of `FirebaseCore` into every framework that depends on it, which would leave Data Connect unable to see the Firebase instance react-native-firebase configured. So the Apple SDK is vendored into this package and Firebase comes from CocoaPods, the same copy react-native-firebase uses. The podspec refuses to install if that is not the case. Full reasoning in [docs/ios-spm.md](docs/ios-spm.md), confirmed upstream in [#9140](https://github.com/invertase/react-native-firebase/issues/9140).
 
 ## Install
 
@@ -38,9 +38,12 @@ cd ios && pod install
 ```
 
 ```ruby
-# ios/Podfile
-use_frameworks! :linkage => :dynamic
+# ios/Podfile, before any target block
+$RNFirebaseDisableSPM = true
+$RNFirebaseAsStaticFramework = true
 ```
+
+On Apple platforms, call `FirebaseApp.configure()` in your `AppDelegate` as react-native-firebase requires. Without it every call fails with `not-configured`.
 
 ## Usage
 
@@ -165,12 +168,14 @@ globalThis.RNSqlConnectDebug = true // logs every native call and its result
 | --- | --- |
 | JavaScript core, hook, error mapping, subscription dedupe | Unit tested (67 tests) |
 | Code generator | Unit tested, plus generated from three real connectors (6, 55 and 96 operations) and compiled |
-| Android Kotlin | **Runs on a device.** Example app on an Android emulator against the Data Connect emulator: 9 of 9 smoke steps pass, including Int64 fidelity, persistent cache, and a realtime subscription |
-| iOS Swift and TurboModule shim | Builds and loads, but **blocked by an upstream linking issue**. See below |
+| Android Kotlin | **9 of 9 smoke steps pass** on an Android emulator against the Data Connect emulator |
+| iOS Swift and TurboModule shim | **9 of 9 smoke steps pass** on an iOS simulator, with the Apple SDK vendored and Firebase from CocoaPods |
+
+Each smoke run covers a mutation, a server read, an on-disk cache read, a realtime subscription reacting to a mutation, Int64 and UUID fidelity, a nested `Any` scalar containing a null, native diagnostics, and error-code mapping.
 
 See [docs/local-testing.md](docs/local-testing.md) for how to reproduce any of this in a few minutes.
 
-**iOS is not shippable yet.** Swift Package Manager resolves one `firebase-ios-sdk` version (12.17.0) for the whole graph, but Xcode links the Firebase library products *statically into each pod framework*, so `FIRApp` ends up duplicated across `RNFBApp.framework`, `RnSqlConnect.framework` and the shared dynamic framework. Each copy keeps its own registry, so `FirebaseApp.configure()` at launch is invisible to the copy this package runs against and every call fails with `not-configured`. The full diagnosis, and why this package refuses to paper over it, is in [docs/ios-spm.md](docs/ios-spm.md#known-issue-firebasecore-is-linked-more-than-once-blocks-ios-today). The fix belongs upstream in react-native-firebase's SPM mode, which shipped the same day this was found. Tracked at [invertase/react-native-firebase#9140](https://github.com/invertase/react-native-firebase/issues/9140), where a maintainer confirmed that no shared instance is possible with today's packaging. iOS is therefore moving to vendored Data Connect sources with Firebase from CocoaPods; see [docs/ios-spm.md](docs/ios-spm.md#known-issue-firebasecore-is-linked-more-than-once-blocks-ios-today).
+On iOS the Apple Data Connect SDK is vendored rather than pulled through Swift Package Manager, because SwiftPM would give this package a private copy of `FirebaseCore` and Data Connect would never see the signed-in user. That is an upstream packaging property, confirmed in [#9140](https://github.com/invertase/react-native-firebase/issues/9140). The vendored copy is pinned and CI fails if it drifts (`npm run vendor:check`).
 
 ## License
 

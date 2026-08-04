@@ -8,12 +8,15 @@ require Pod::Executable.execute_command('node', ['-p',
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
-# rn-sql-connect requires dynamic linkage. FirebaseDataConnect ships through
-# Swift Package Manager only, and firebase-ios-sdk's Swift Package declares
-# dynamic library products, so static linkage produces duplicate symbols.
-# USE_FRAMEWORKS=static is still allowed here on purpose: CI uses it to prove
-# the podspec fails with a readable message instead of a linker wall.
-linkage = ENV['USE_FRAMEWORKS'] || 'dynamic'
+# rn-sql-connect takes Firebase from CocoaPods so that it shares the instance
+# react-native-firebase configures. That means react-native-firebase must be in
+# CocoaPods mode too: in SPM mode there would be two copies of FirebaseCore and
+# Data Connect would never see the configured app.
+# https://github.com/invertase/react-native-firebase/issues/9140
+$RNFirebaseDisableSPM = true
+$RNFirebaseAsStaticFramework = true
+
+linkage = ENV['USE_FRAMEWORKS'] || 'static'
 Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
 use_frameworks! :linkage => linkage.to_sym
 

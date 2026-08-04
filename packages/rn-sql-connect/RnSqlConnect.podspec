@@ -3,53 +3,46 @@ require "json"
 package = JSON.parse(File.read(File.join(__dir__, "package.json")))
 sdk_versions = package["sdkVersions"]["ios"]
 
-# rn-sql-connect resolves FirebaseCore through react-native-firebase's helper so
-# that both packages end up on exactly one copy of the Firebase Apple SDK. Doing
-# it any other way means two Firebase copies in one binary, where the Data
-# Connect side sees a FirebaseApp that was never configured.
-begin
-  # Resolved through package.json, not through the .rb file directly: the
-  # package's `exports` map does not expose the Ruby helper, so asking node for
-  # it fails with ERR_PACKAGE_PATH_NOT_EXPORTED.
-  rnfb_package_json = Pod::Executable.execute_command("node", ["-p",
-    "require.resolve('@react-native-firebase/app/package.json', {paths: [process.argv[1]]})",
-    __dir__]).strip
-  rnfb_dir = File.dirname(rnfb_package_json)
-  require File.join(rnfb_dir, "firebase_spm")
-  # Read the Firebase version from react-native-firebase itself rather than
-  # pinning our own. One package decides the version, always.
-  rnfb_package = JSON.parse(File.read(rnfb_package_json))
-  $RNSqlConnectFirebaseVersion = rnfb_package["sdkVersions"]["ios"]["firebase"]
-  $RNSqlConnectHasRNFBSpm = true
-rescue StandardError => e
-  Pod::UI.warn "[rn-sql-connect] Could not load @react-native-firebase/app/firebase_spm.rb (#{e.message})."
-  Pod::UI.warn "[rn-sql-connect] Install @react-native-firebase/app >= 26.1.0. iOS support depends on it."
-  $RNSqlConnectHasRNFBSpm = false
+# Firebase version follows react-native-firebase when it is installed, so the
+# version can only ever come from one place. `$FirebaseSDKVersion` is the escape
+# hatch react-native-firebase itself documents.
+firebase_version = $FirebaseSDKVersion
+if firebase_version.nil?
+  begin
+    rnfb_package_json = Pod::Executable.execute_command("node", ["-p",
+      "require.resolve('@react-native-firebase/app/package.json', {paths: [process.argv[1]]})",
+      __dir__]).strip
+    firebase_version = JSON.parse(File.read(rnfb_package_json))["sdkVersions"]["ios"]["firebase"]
+  rescue StandardError
+    firebase_version = sdk_versions["firebase"]
+  end
 end
 
-# Static linkage cannot work here, so fail during `pod install` with an
-# explanation rather than leaving a wall of duplicate-symbol linker output.
+# rn-sql-connect needs the SAME Firebase instance that react-native-firebase
+# configures, otherwise Data Connect cannot see the signed-in user or the App
+# Check token. That rules out Swift Package Manager for the Firebase side:
+# firebase-ios-sdk declares its products with the automatic type, so SwiftPM
+# links a private copy of FirebaseCore into every framework that depends on it
+# and each copy keeps its own registry of configured apps. A react-native-firebase
+# maintainer confirmed there is no way to share an instance in that mode:
+# https://github.com/invertase/react-native-firebase/issues/9140
 #
-# Reason: firebase-ios-sdk's Swift Package only declares dynamic library
-# products. Under `use_frameworks! :linkage => :static` every pod that resolves
-# Firebase through SPM embeds its own copy. react-native-firebase raises for the
-# same reason; see `rnfirebase_fail_if_spm_static_linkage!`.
-def rn_sql_connect_fail_if_static_linkage!(installer)
-  static_targets = installer.aggregate_targets.select do |target|
-    target.target_definition.build_type.static?
-  end
-  return if static_targets.empty?
-
+# So Firebase comes from CocoaPods here, exactly like react-native-firebase in
+# its CocoaPods mode, and the Data Connect sources are vendored under
+# ios/vendor rather than pulled as a Swift Package. Only grpc-swift stays on
+# SPM, which is safe because nothing else in a React Native app links it.
+unless defined?($RNFirebaseDisableSPM) && $RNFirebaseDisableSPM == true
   raise <<~ERROR
-    [rn-sql-connect] SPM plus static linkage is not supported (target(s): #{static_targets.map(&:name).join(', ')}).
+    [rn-sql-connect] react-native-firebase is resolving Firebase through Swift Package
+    Manager, and this package resolves it through CocoaPods. Two copies of
+    FirebaseCore in one process means Data Connect cannot see the app that
+    react-native-firebase configured, so every call fails with not-configured.
 
-    FirebaseDataConnect is only available through Swift Package Manager, and
-    firebase-ios-sdk's Swift Package only ships dynamic library products.
+    Add this to your Podfile, before any target block:
 
-    Fix it with:
-      use_frameworks! :linkage => :dynamic
+      $RNFirebaseDisableSPM = true
 
-    See docs/ios-spm.md for the full migration notes.
+    Background: https://github.com/invertase/react-native-firebase/issues/9140
   ERROR
 end
 
@@ -63,7 +56,9 @@ Pod::Spec.new do |s|
   s.platforms    = { :ios => sdk_versions["iosTarget"] }
   s.source       = { :git => "https://github.com/duysolo/rn-sql-connect.git", :tag => "v#{s.version}" }
 
+  # Includes ios/vendor/FirebaseDataConnect, the vendored Data Connect SDK.
   s.source_files = "ios/**/*.{h,m,mm,swift}"
+  s.preserve_paths = "ios/vendor/**/LICENSE"
 
   s.pod_target_xcconfig = {
     "DEFINES_MODULE" => "YES",
@@ -72,27 +67,27 @@ Pod::Spec.new do |s|
 
   install_modules_dependencies(s)
 
-  # FirebaseDataConnect ships through Swift Package Manager only. There is no
-  # CocoaPods spec for it and there never will be: Firebase stops publishing to
-  # CocoaPods in October 2026.
+  # The same pods react-native-firebase uses in CocoaPods mode, so there is one
+  # FirebaseCore in the process and Data Connect reads the app, the user and the
+  # App Check token that react-native-firebase set up.
+  s.dependency "Firebase/CoreOnly", firebase_version
+  s.dependency "FirebaseAuth", firebase_version
+  s.dependency "FirebaseAppCheckInterop", firebase_version
+  s.dependency "FirebaseCoreExtension", firebase_version
+  s.dependency "GoogleUtilities/Environment"
+
+  # gRPC has no CocoaPods distribution, and nothing else in a React Native app
+  # links grpc-swift, so a Swift Package here cannot collide with anything.
   if defined?(spm_dependency)
     spm_dependency(s,
-      url: sdk_versions["dataConnectSpmUrl"],
-      requirement: { kind: "upToNextMajorVersion", minimumVersion: sdk_versions["dataConnect"] },
-      products: ["FirebaseDataConnect"]
+      url: "https://github.com/grpc/grpc-swift.git",
+      requirement: { kind: "exactVersion", version: sdk_versions["grpcSwift"] },
+      products: ["GRPC"]
     )
   else
     raise <<~ERROR
       [rn-sql-connect] This React Native version does not provide `spm_dependency`.
-      rn-sql-connect requires React Native 0.85 or newer, because FirebaseDataConnect
-      is distributed exclusively through Swift Package Manager.
+      rn-sql-connect requires React Native 0.85 or newer.
     ERROR
   end
-
-  # FirebaseCore is deliberately NOT declared here. FirebaseDataConnect already
-  # depends on it through Swift Package Manager, and adding it a second time
-  # links another static copy of FirebaseCore into this framework. Three copies
-  # of FIRApp then exist in one process (here, RNFBApp, and the SPM framework),
-  # each with its own registry, so FirebaseApp.app() returns nil on the copy
-  # this code runs against even though the app configured Firebase at launch.
 end

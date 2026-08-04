@@ -78,9 +78,14 @@ adb logcat -d | grep SMOKE
 For iOS:
 
 ```sh
-cd example/ios && USE_FRAMEWORKS=dynamic bundle exec pod install && cd -
+cd example/ios && bundle exec pod install && cd -
 npm run example:ios
-xcrun simctl spawn booted log show --last 2m --predicate 'eventMessage CONTAINS "[SMOKE]"' --style compact
+```
+
+The iOS console does not carry JavaScript `console.log` reliably, so read the result from the app screen or take a screenshot:
+
+```sh
+xcrun simctl io booted screenshot /tmp/smoke.png && open /tmp/smoke.png
 ```
 
 ## Reaching the emulator from a device
@@ -115,7 +120,9 @@ No native rebuild. Operations cross the bridge by name, which is the point of th
 
 **`Could not find @react-native/gradle-plugin`**: npm workspaces hoist to the repository root, so `example/android/settings.gradle` points one level higher than the React Native template does. Run `npm install` at the root.
 
-**`pod install` fails complaining about static linkage**: that is the guard working. See [ios-spm.md](ios-spm.md).
+**`pod install` fails saying react-native-firebase is using Swift Package Manager**: that is the guard working. Add `$RNFirebaseDisableSPM = true` to the Podfile. See [ios-spm.md](ios-spm.md).
+
+**iOS says `not-configured`**: `AppDelegate` is missing `FirebaseApp.configure()`, or `GoogleService-Info.plist` is not a member of the app target. The example app has both; copy from there.
 
 **Metro resolves two copies of React**: `example/metro.config.js` sets `disableHierarchicalLookup` and lists both `node_modules` folders. Keep it that way.
 

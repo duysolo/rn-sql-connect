@@ -84,9 +84,11 @@
   },
   "sdkVersions": {
     "ios": {
-      "dataConnectSpmUrl": "https://github.com/firebase/data-connect-ios-sdk.git",
       "dataConnect": "11.12.5",
-      "iosTarget": "15.0"
+      "iosTarget": "15.0",
+      "dataConnectVendoredFrom": "https://github.com/firebase/data-connect-ios-sdk",
+      "grpcSwift": "1.27.1",
+      "firebase": "12.10.0"
     },
     "android": {
       "minSdk": 23,

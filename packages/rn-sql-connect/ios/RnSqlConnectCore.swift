@@ -1,6 +1,5 @@
 import Combine
 import FirebaseCore
-import FirebaseDataConnect
 import Foundation
 
 /// All Data Connect work lives here.
@@ -20,6 +19,10 @@ public final class RnSqlConnectCore: NSObject {
   private var instances: [String: Instance] = [:]
   private var subscriptions: [String: AnyCancellable] = [:]
   private var subscriptionInstanceKeys: [String: String] = [:]
+  /// Ids cancelled before their subscription finished starting. Without this,
+  /// an unsubscribe that arrives during the start hop is lost and the stream
+  /// keeps running with nobody listening.
+  private var cancelledSubIds: Set<String> = []
   private let lock = NSLock()
 
   /// Called for every subscription update. Set by the TurboModule shim.
@@ -190,6 +193,12 @@ public final class RnSqlConnectCore: NSObject {
           }
         }
         self.lock.lock()
+        if self.cancelledSubIds.remove(subId) != nil {
+          self.lock.unlock()
+          cancellable.cancel()
+          resolve(nil)
+          return
+        }
         self.subscriptions[subId] = cancellable
         self.subscriptionInstanceKeys[subId] = instanceKey
         self.lock.unlock()
@@ -207,9 +216,16 @@ public final class RnSqlConnectCore: NSObject {
     reject _: @escaping (String, String, String) -> Void
   ) {
     lock.lock()
-    subscriptions.removeValue(forKey: subId)?.cancel()
-    subscriptionInstanceKeys.removeValue(forKey: subId)
-    lock.unlock()
+    if let cancellable = subscriptions.removeValue(forKey: subId) {
+      subscriptionInstanceKeys.removeValue(forKey: subId)
+      lock.unlock()
+      cancellable.cancel()
+    } else {
+      // The subscription is still starting. Record the cancel so the start hop
+      // tears it down instead of storing a stream nobody listens to.
+      cancelledSubIds.insert(subId)
+      lock.unlock()
+    }
     // Unknown ids resolve quietly: JS may cancel before the start call settled.
     resolve(nil)
   }
@@ -221,6 +237,7 @@ public final class RnSqlConnectCore: NSObject {
     subscriptions.values.forEach { $0.cancel() }
     subscriptions.removeAll()
     subscriptionInstanceKeys.removeAll()
+    cancelledSubIds.removeAll()
     instances.removeAll()
     lock.unlock()
   }

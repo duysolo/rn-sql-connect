@@ -55,7 +55,7 @@ export const runSmokeTest = async (
     console.log(`[SMOKE] ${passed ? 'PASS' : 'FAIL'} ${name} :: ${detail}`)
   }
 
-  let movieId = ''
+  let movieId: string
 
   try {
     const created = await executeMutation<{ movie_insert: { id: string } }>(dc, 'CreateMovie', {
@@ -148,6 +148,9 @@ export const runSmokeTest = async (
     await executeMutation(dc, 'UpdateMovie', { id: movieId, genre: 'Sci-Fi', rating: 3 })
     await wait(4000)
     unsubscribe()
+    // Unsubscribe crosses the bridge asynchronously, so give it a moment before
+    // asking native how many subscriptions are left.
+    await wait(500)
 
     record(
       'realtime subscription',

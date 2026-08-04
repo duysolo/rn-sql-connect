@@ -24,6 +24,9 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # The vendored Apple SDK must stay identical to the pinned upstream tag
+      # plus the recorded patches, otherwise it drifts silently.
+      - run: npm run vendor:check
 
   codegen-roundtrip:
     name: Codegen round trip
@@ -74,11 +77,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # Dynamic linkage is the only supported configuration. See docs/ios-spm.md.
+      # CocoaPods mode, so Data Connect shares one FirebaseCore with
+      # react-native-firebase. See docs/ios-spm.md.
       - name: pod install
         working-directory: example/ios
-        env:
-          USE_FRAMEWORKS: dynamic
         run: bundle exec pod install
       - name: Build
         working-directory: example/ios
@@ -88,8 +90,8 @@ jobs:
             -sdk iphonesimulator \
             -configuration Debug build | xcpretty
 
-  ios-static-linkage-must-fail:
-    name: Podspec rejects static linkage
+  ios-rejects-spm-mode:
+    name: Podspec rejects react-native-firebase in SPM mode
     runs-on: macos-15
     if: hashFiles('example/ios/Podfile') != ''
     steps:
@@ -99,16 +101,15 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # A negative test. Static linkage cannot work with SPM-provided Firebase,
-      # so `pod install` has to fail with our message rather than produce a
-      # binary that fails at link time.
+      # A negative test. With react-native-firebase in SPM mode there would be
+      # two copies of FirebaseCore and every call would fail at runtime with
+      # not-configured, so `pod install` has to refuse instead.
       - name: pod install must fail
         working-directory: example/ios
-        env:
-          USE_FRAMEWORKS: static
         run: |
+          sed -i '' 's/^\$RNFirebaseDisableSPM = true/$RNFirebaseDisableSPM = false/' Podfile
           if bundle exec pod install; then
-            echo "Expected pod install to fail under static linkage"
+            echo "Expected pod install to fail when react-native-firebase uses SPM"
             exit 1
           fi
 

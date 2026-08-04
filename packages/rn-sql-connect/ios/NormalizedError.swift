@@ -1,5 +1,5 @@
-import FirebaseDataConnect
 import Foundation
+import GRPC
 
 /// Platform-neutral error shape.
 ///
@@ -55,6 +55,31 @@ struct NormalizedError {
     return "\(body)\(separator)\"\(key)\":\(value)}"
   }
 
+  /// gRPC carries the real status, so it is read directly rather than guessed
+  /// from message text. Android gets the same codes through its own exception
+  /// tree; matching them is what keeps error handling portable.
+  private static func grpcCode(_ error: Error?) -> String? {
+    guard let error else { return nil }
+    let status: GRPCStatus?
+    if let direct = error as? GRPCStatus {
+      status = direct
+    } else if let transformable = error as? GRPCStatusTransformable {
+      status = transformable.makeGRPCStatus()
+    } else {
+      status = nil
+    }
+    guard let code = status?.code else { return nil }
+    switch code {
+    case .notFound: return "not-found"
+    case .permissionDenied: return "unauthorized"
+    case .unauthenticated: return "unauthenticated"
+    case .invalidArgument, .failedPrecondition: return "invalid-argument"
+    case .unavailable, .deadlineExceeded, .resourceExhausted: return "unavailable"
+    case .cancelled: return "cancelled"
+    default: return nil
+    }
+  }
+
   static func from(_ error: Error, operationName: String?) -> NormalizedError {
     let unwrapped: Error
     if let anyError = error as? AnyDataConnectError {
@@ -77,8 +102,10 @@ struct NormalizedError {
         ]
       }
       let hasData = response?.rawJsonData != nil
+      let mapped = grpcCode(operationError.underlyingError)
+        ?? classify(operationError.message ?? "")
       return NormalizedError(
-        code: hasData ? "partial-error" : classify(operationError.message ?? ""),
+        code: hasData ? "partial-error" : mapped,
         message: operationError.message ?? "Data Connect operation failed",
         operationName: operationName,
         graphQLErrors: errors,
@@ -108,7 +135,7 @@ struct NormalizedError {
     if let internalError = unwrapped as? DataConnectInternalError {
       let message = internalError.message ?? "Data Connect internal error"
       return NormalizedError(
-        code: classify(message),
+        code: grpcCode(internalError.underlyingError) ?? classify(message),
         message: message,
         operationName: operationName,
         nativeCode: "DataConnectInternalError.\(internalError.code)"
@@ -117,7 +144,7 @@ struct NormalizedError {
 
     let description = String(describing: unwrapped)
     return NormalizedError(
-      code: classify(description),
+      code: grpcCode(unwrapped) ?? classify(description),
       message: (unwrapped as NSError).localizedDescription,
       operationName: operationName,
       nativeCode: String(describing: type(of: unwrapped))

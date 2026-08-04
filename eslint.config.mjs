@@ -11,11 +11,14 @@ export default [
       '**/*.d.ts',
       // Fixture copied from firebase-tools output; it is not our code style.
       'example/generated/**',
+      // Native project files, not ours to lint.
+      'example/ios/**',
+      'example/android/**',
     ],
   },
   js.configs.recommended,
   {
-    files: ['*.config.js', '*.config.mjs'],
+    files: ['*.config.js', '*.config.mjs', 'example/*.js', 'example/.*.js'],
     languageOptions: {
       globals: { module: 'writable', require: 'readonly', __dirname: 'readonly' },
     },
