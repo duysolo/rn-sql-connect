@@ -1,6 +1,6 @@
 {
   "name": "rn-sql-connect",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "React Native native SDK for Firebase SQL Connect (Data Connect). Wraps the Android and Apple native SDKs instead of running the JS web SDK inside React Native.",
   "main": "./dist/module/index.js",
   "types": "./dist/typescript/index.d.ts",
