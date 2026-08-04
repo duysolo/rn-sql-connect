@@ -30,6 +30,18 @@ Running `firebase/data-connect` inside React Native works, but it costs you:
 
 **iOS needs react-native-firebase in CocoaPods mode.** `FirebaseDataConnect` is distributed through Swift Package Manager only, and SwiftPM links a private copy of `FirebaseCore` into every framework that depends on it, which would leave Data Connect unable to see the Firebase instance react-native-firebase configured. So the Apple SDK is vendored into this package and Firebase comes from CocoaPods, the same copy react-native-firebase uses. The podspec refuses to install if that is not the case. Full reasoning in [docs/ios-spm.md](docs/ios-spm.md), confirmed upstream in [#9140](https://github.com/invertase/react-native-firebase/issues/9140).
 
+## Documentation
+
+| | |
+| --- | --- |
+| [Getting started](docs/getting-started.md) | install, configure, first query |
+| [API reference](docs/api.md) | every export, option and error code |
+| [Code generation](docs/codegen.md) | typed wrappers from your connector |
+| [Recipes](docs/recipes.md) | caching, realtime, auth, migrating off the web SDK |
+| [Local testing](docs/local-testing.md) | run it all against the emulator |
+| [Troubleshooting](docs/troubleshooting.md) | real failures and what they mean |
+| [iOS setup](docs/ios-spm.md) | why the Apple SDK is vendored |
+
 ## Install
 
 ```sh
