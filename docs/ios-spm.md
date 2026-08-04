@@ -108,12 +108,33 @@ Upstream, in react-native-firebase's SPM integration, which shipped in 26.1.0 on
 
 Reported with this reproduction: **[invertase/react-native-firebase#9140](https://github.com/invertase/react-native-firebase/issues/9140)**.
 
+A react-native-firebase maintainer confirmed the diagnosis and answered the question that decides this package's iOS strategy: **with today's packaging there is no way to share one FirebaseCore between react-native-firebase in SPM mode and another pod.**
+
+| react-native-firebase | Other native dependency | Shared FirebaseCore |
+| --- | --- | --- |
+| SPM | SPM via `spm_dependency` | No |
+| SPM | CocoaPods Firebase pods | No, dual resolution |
+| CocoaPods (`$RNFirebaseDisableSPM = true`) | CocoaPods Firebase pods | **Yes** |
+
+They also confirmed that linking the product onto the app target, which was the helper this package proposed, does not help: it exists so the app target can call `FirebaseApp.configure()`, not to give pods a shared instance. Their view is that the long-term fix belongs in firebase-ios-sdk, whose products would need to be declared `.library(type: .dynamic)`.
+
 Two workarounds were tried here and neither holds up:
 
 - Building this pod as a static framework so it merges into the app binary. It then has to link the whole transitive Swift Package closure itself, starting with `GULAppEnvironmentUtil`, which is not something a consumer should have to mirror by hand.
 - Adding `FirebaseDataConnect` to the app target from the example's `post_install`, mirroring what `rnfirebase_add_spm_core_to_app_target` does for FirebaseCore. This still failed to link, with missing gRPC symbols.
 
-Until the upstream direction is settled:
+### What this package does instead
+
+The bottom row of that table is the only configuration that shares a Firebase instance, so iOS moves to it: **vendor the `FirebaseDataConnect` Swift sources into this pod** (Apache-2.0, attribution kept) and take `FirebaseCore`, `FirebaseAuth` and `FirebaseAppCheckInterop` from CocoaPods, the same copies react-native-firebase uses. Only `grpc-swift` stays on Swift Package Manager, which is safe because nothing else in the graph pulls it.
+
+This was written up in the original plan as the fallback, with a note that it had a short shelf life because Firebase stops publishing pods in October 2026. That note still stands, but the ordering has flipped: it is now the only working path, not the fallback.
+
+Consequences to accept:
+
+- The vendored sources have to be synced when `data-connect-ios-sdk` releases, so the version is pinned and CI watches for new tags.
+- When firebase-ios-sdk ships dynamic products, the SPM route becomes viable again and this can be revisited.
+
+Status right now:
 
 - **Android**: fully working, no action needed.
-- **iOS**: blocked. Do not ship it.
+- **iOS**: blocked until the vendoring work lands. Do not ship the SPM version.
