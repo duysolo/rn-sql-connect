@@ -20,7 +20,7 @@ Postgres is **not** required. The emulator starts its own on 127.0.0.1:5432.
 The fastest loop, a couple of seconds. Covers the whole JavaScript layer and the code generator.
 
 ```sh
-npm test          # 67 tests
+npm test          # 77 tests
 npm run lint
 npm run typecheck
 node scripts/codegen-roundtrip.mjs   # generates an SDK and compiles it
@@ -79,7 +79,9 @@ adb logcat -d | grep SMOKE
 [SMOKE] PASS native sees the signed-in user :: {"hasCurrentUser":true,"uid":"RJNdz..."}
 [SMOKE] PASS diagnostics :: {"configured":true,"activeSubscriptions":0,...}
 [SMOKE] PASS error mapping :: not-found: NOT_FOUND: operation "NoSuchOperation" not found
-[SMOKE] RESULT 16/16 passed
+[SMOKE] PASS clearCache removes the cache files and is idempotent :: first=3 second=0
+[SMOKE] PASS clearCache: what a CACHE_ONLY read does afterwards :: still served from an open handle (source=cache)
+[SMOKE] RESULT 18/18 passed
 ```
 
 For iOS:

@@ -29,16 +29,23 @@ import { getNativeModule } from './native'
  * The SDK recreates what it needs on the next query. Calling this on a fresh install, or twice in
  * a row, is not an error - it just reports 0.
  *
- * ## Call it AFTER signing out
+ * ## The files go immediately; the current process may not notice until it restarts
  *
- * Ordering matters, and only in one direction:
+ * Measured on a device (both platforms, 05/08/2026), populating a cache then clearing it:
  *
- *   - Sign out first, then clear. On Apple platforms the SDK swaps cache files when the auth state
- *     changes and closes the one it was holding, so by then the signed-out user's file is closed
- *     and its deletion is complete.
- *   - Clearing while a database is still open deletes the files, but the SDK's open handle keeps
- *     reading and writing the now-unlinked file until the process exits. Nothing is left on disk
- *     either way; what lingers is one already-open handle inside the current process.
+ *   | | files removed | a `CACHE_ONLY` read straight afterwards |
+ *   |---|---|---|
+ *   | iOS | 3, second call 0 | misses, code `cache-miss` |
+ *   | Android | 3, second call 0 | **still served**, `source: 'cache'` |
+ *
+ * They differ because Android's open SQLite handle keeps reading the now-unlinked file until the
+ * process exits. On disk the result is identical and that is what this function promises: the
+ * databases directory is empty on both. What Android keeps alive is one handle inside the running
+ * process, and it dies with the process.
+ *
+ * If a read must miss *now* rather than after the next launch, do not rely on this - route the
+ * read with `SERVER_ONLY`. Signing out first is still the right order: it is when the Apple SDK
+ * closes the file it holds.
  *
  * There is no need to `terminate()` first, and no need to recreate handles afterwards.
  *

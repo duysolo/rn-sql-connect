@@ -71,7 +71,9 @@ await signOut(getAuth())
 await clearCache()   // deletes every Data Connect cache file for this app
 ```
 
-Sign out first. On Apple platforms the auth change makes the SDK close the file it was holding, so the deletion is complete rather than leaving one open handle alive until the process exits.
+Sign out first: that is when the Apple SDK closes the cache file it holds.
+
+One measured difference worth knowing. Straight after the wipe, a `CACHE_ONLY` read misses on iOS but is **still served on Android**, because Android's open SQLite handle keeps reading the unlinked file until the process exits. The files are gone from disk on both - if a read must miss immediately rather than after the next launch, give that read `SERVER_ONLY` instead of relying on the wipe.
 
 If you would rather never write user data to disk in the first place, the alternatives still apply:
 

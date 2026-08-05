@@ -196,10 +196,10 @@ globalThis.RNSqlConnectDebug = true // logs every native call and its result
 
 | Layer | State |
 | --- | --- |
-| JavaScript core, hook, error mapping, subscription dedupe | Unit tested (67 tests) |
+| JavaScript core, hook, error mapping, subscription dedupe | Unit tested (77 tests) |
 | Code generator | Unit tested, plus generated from three real connectors (6, 55 and 96 operations) and compiled |
-| Android Kotlin | **16 of 16 smoke steps pass** on an Android emulator against the Data Connect emulator |
-| iOS Swift and TurboModule shim | **16 of 16 smoke steps pass** on an iOS simulator, with the Apple SDK vendored and Firebase from CocoaPods |
+| Android Kotlin | **18 of 18 smoke steps pass** on an Android emulator against the Data Connect emulator |
+| iOS Swift and TurboModule shim | **18 of 18 smoke steps pass** on an iOS simulator, with the Apple SDK vendored and Firebase from CocoaPods |
 
 Each smoke run covers, on a real device, against a real emulator:
 
@@ -208,8 +208,11 @@ Each smoke run covers, on a real device, against a real emulator:
 - **every scalar the wire format carries**: `Int64`, `UUID`, `Timestamp`, `Date`, `Float`, `Boolean`, `String`, `Int`, lists of `String` and `Int`, and a nested `Any` containing a null
 - **auth**: an `@auth(level: USER)` operation refused while signed out, then accepted after signing in with `@react-native-firebase/auth`, with native reporting the same uid. No token plumbing anywhere
 - native diagnostics and error-code mapping agreeing across both platforms
+- **`clearCache`**: three cache files erased and a second call reporting `0`, with the databases directory verified empty afterwards
 
 Still unproven: App Check (implemented, not exercised), a secondary Firebase app, `Vector` and enum scalars, and true offline behaviour with the network off.
+
+One measured platform difference, [documented rather than papered over](docs/reference/api.md#clearcache): straight after `clearCache`, a `CACHE_ONLY` read misses on iOS but is still served on Android, whose open SQLite handle keeps reading the unlinked file until the process exits. The files are gone from disk on both.
 
 See [Local testing](docs/contributing/local-testing.md) for how to reproduce any of this in a few minutes.
 

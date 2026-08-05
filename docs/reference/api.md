@@ -79,7 +79,16 @@ Deletes every Data Connect cache file this app has on disk. Resolves with the nu
 - Apple names each cache file after a hash of the connector config plus a hash of the signed-in uid. Reproducing that recipe to delete one slice would depend on an internal detail with no stability promise, and the day it changes the deletion would silently stop matching anything. So everything under `<Documents>/com.google.firebase.dataconnect` goes.
 - Android keeps one database for the app and scopes rows by uid inside it, so there is no per-user file to single out.
 
-**Call it after signing out.** Ordering matters in one direction only. On Apple platforms the SDK swaps cache files when the auth state changes and closes the one it held, so by the time you clear, the signed-out user's file is closed and its deletion is complete. Clearing while a database is still open also removes the files, but the SDK's open handle keeps using the unlinked file until the process exits: nothing survives on disk either way, what lingers is one handle inside the running process.
+**Call it after signing out.** That is when the Apple SDK closes the cache file it holds.
+
+**The files go immediately; the current process may not notice until it restarts.** Measured on a device, populating a cache then clearing it:
+
+| | files removed | a `CACHE_ONLY` read straight afterwards |
+| --- | --- | --- |
+| iOS | 3, second call `0` | misses, code `cache-miss` |
+| Android | 3, second call `0` | **still served**, `source: 'cache'` |
+
+Android's open SQLite handle keeps reading the unlinked file until the process exits. On disk the outcome is the same on both - the databases directory is empty - and that is what this function promises. If a read has to miss *now* rather than after the next launch, use `SERVER_ONLY` for it instead of relying on the wipe.
 
 Handles stay valid. There is no need to `terminate()` first or to rebuild anything afterwards - the SDK recreates what it needs on the next query. Running it twice, or on a fresh install, reports `0` rather than failing.
 
