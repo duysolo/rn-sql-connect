@@ -16,7 +16,8 @@ import { getNativeModule } from './native'
  *
  * Everything, for every connector and every user of this app - not one instance's slice:
  *
- *   - Apple: the whole `<Documents>/com.google.firebase.dataconnect` directory. The SDK names each
+ *   - Apple: everything inside `<Documents>/com.google.firebase.dataconnect` (the directory itself
+ *     stays; the SDK recreates its contents on demand). The SDK names each
  *     file after a hash of `(storage, projectId, appName, serviceId, connector, location, host)`
  *     plus a hash of the signed-in uid, which means one file per user per connector. Reproducing
  *     that recipe here to delete a single slice would be betting on an internal detail that has no

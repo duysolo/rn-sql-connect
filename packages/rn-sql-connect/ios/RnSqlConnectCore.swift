@@ -160,6 +160,18 @@ public final class RnSqlConnectCore: NSObject {
       return
     }
 
+    // Off the calling thread, matching Android's IO dispatcher. Unlinking a couple of small files
+    // is quick, but "quick" is not a reason to do file I/O on the thread that runs JavaScript.
+    DispatchQueue.global(qos: .utility).async {
+      Self.removeContents(of: directory, resolve: resolve, reject: reject)
+    }
+  }
+
+  private static func removeContents(
+    of directory: URL,
+    resolve: @escaping (Any?) -> Void,
+    reject: @escaping (String, String, String) -> Void
+  ) {
     let manager = FileManager.default
     guard manager.fileExists(atPath: directory.path) else {
       // Never queried, or already cleared. Both are "nothing on disk", not failures.

@@ -24,7 +24,7 @@ Everything here is enforced by CI already, so this is about not publishing from 
 
 ```sh
 git status                      # clean, on main, pushed
-npm test                        # 72 tests
+npm test                        # 77 tests
 npm run lint
 npm run typecheck
 npm run vendor:check            # vendored Apple SDK matches its pinned tag
@@ -40,7 +40,7 @@ npm run verify:package
 ```
 
 ```
-ok   rn-sql-connect@0.1.0, 301 files
+ok   rn-sql-connect@0.3.0, 309 files
 ok   rn-sql-connect-codegen@0.1.0, 24 files
 ```
 
@@ -101,7 +101,7 @@ npm publish --tag next --otp=123456
 Consumers then opt in with `npm install rn-sql-connect@next`, and `npm install rn-sql-connect` keeps resolving to the last stable release. Promote later:
 
 ```sh
-npm dist-tag add rn-sql-connect@0.2.0 latest
+npm dist-tag add rn-sql-connect@0.3.0 latest
 ```
 
 ## Versioning

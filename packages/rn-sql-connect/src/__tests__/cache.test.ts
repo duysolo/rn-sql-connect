@@ -14,7 +14,11 @@ import { SqlConnectError } from '../core/errors'
 import { getSqlConnect, resetInstancesForTests } from '../core/instance'
 import { resetNativeModuleCache } from '../core/native'
 
-const CONFIG = { connector: 'tramev', location: 'asia-southeast1', serviceId: 'estations-io-service' }
+const CONFIG = {
+  connector: 'tramev',
+  location: 'asia-southeast1',
+  serviceId: 'estations-io-service',
+}
 
 beforeEach(() => {
   native = createNativeMock()
@@ -42,7 +46,7 @@ describe('clearCache', () => {
 
     const error = await clearCache().then(
       () => undefined,
-      (rejection: unknown) => rejection as SqlConnectError
+      (rejection: unknown) => rejection as SqlConnectError,
     )
 
     expect(error).toBeInstanceOf(SqlConnectError)

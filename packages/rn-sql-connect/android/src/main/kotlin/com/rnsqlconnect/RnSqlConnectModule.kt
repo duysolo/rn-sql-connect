@@ -15,6 +15,7 @@ import com.google.firebase.dataconnect.FirebaseDataConnect
 import com.google.firebase.dataconnect.QueryRef
 import com.google.firebase.dataconnect.getInstance
 import com.google.firebase.dataconnect.serializers.AnyValueSerializer
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CancellationException
 import kotlin.time.Duration.Companion.seconds
@@ -126,33 +127,49 @@ class RnSqlConnectModule(reactContext: ReactApplicationContext) :
         val databasesDir = reactApplicationContext.getDatabasePath("probe").parentFile
           ?: return@runCatching 0
 
-        val files = databasesDir.listFiles { file -> file.name.startsWith(CACHE_DB_PREFIX) }
-          ?: return@runCatching 0
+        val before = cacheFiles(databasesDir)
+        if (before.isEmpty()) {
+          // Never queried, or already cleared. Both are "nothing on disk", not failures.
+          return@runCatching 0
+        }
 
-        var removed = 0
-        // Main databases first, so deleteDatabase can take its own siblings with it.
-        files
+        // Main databases first so deleteDatabase can take its own siblings with it, then sweep
+        // whatever is left. The sweep also covers an SDK version that names siblings differently.
+        before
           .filter { file -> SIBLING_SUFFIXES.none { file.name.endsWith(it) } }
-          .forEach { file ->
-            if (SQLiteDatabase.deleteDatabase(file)) {
-              removed += 1
-            }
-          }
+          .forEach { file -> SQLiteDatabase.deleteDatabase(file) }
+        cacheFiles(databasesDir).forEach { file -> file.delete() }
 
-        databasesDir.listFiles { file -> file.name.startsWith(CACHE_DB_PREFIX) }
-          ?.forEach { file ->
-            if (file.delete()) {
-              removed += 1
-            }
-          }
+        // Judged against the files found at the start, not against "is the directory empty now".
+        // A query running concurrently with sign-out can create a fresh cache file between the
+        // delete and this check; that file is not a failure to erase the old one, and reporting it
+        // as one would fail a wipe that actually worked. iOS gets this for free by enumerating once.
+        val beforeNames = before.map { it.name }.toSet()
+        val remaining = cacheFiles(databasesDir).filter { beforeNames.contains(it.name) }
+        if (remaining.isNotEmpty()) {
+          // Partial success reports as failure, matching iOS. A caller erasing a signed-out
+          // user's data has to be able to tell "erased" from "mostly erased".
+          throw IllegalStateException(
+            "Removed ${before.size - remaining.size} file(s) but ${remaining.size} could not be " +
+              "deleted: " + remaining.joinToString(separator = "; ") { it.name },
+          )
+        }
 
-        removed
+        // Counted by listing rather than by return values: deleteDatabase reports one boolean per
+        // DATABASE while removing up to four files, so counting its trues would report a number
+        // that is neither databases nor files.
+        before.size
       }.fold(
         onSuccess = { promise.resolve(it) },
         onFailure = { rejectWith(promise, it, null) },
       )
     }
   }
+
+  /** Every file the Data Connect cache owns in [databasesDir], main databases and sidecars alike. */
+  private fun cacheFiles(databasesDir: File): List<File> =
+    databasesDir.listFiles { file: File -> file.name.startsWith(CACHE_DB_PREFIX) }?.toList()
+      ?: emptyList()
 
   // MARK: operations
 

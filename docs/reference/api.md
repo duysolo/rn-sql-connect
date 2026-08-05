@@ -76,7 +76,7 @@ Deletes every Data Connect cache file this app has on disk. Resolves with the nu
 
 **App-wide, not per instance.** It takes no argument on purpose:
 
-- Apple names each cache file after a hash of the connector config plus a hash of the signed-in uid. Reproducing that recipe to delete one slice would depend on an internal detail with no stability promise, and the day it changes the deletion would silently stop matching anything.
+- Apple names each cache file after a hash of the connector config plus a hash of the signed-in uid. Reproducing that recipe to delete one slice would depend on an internal detail with no stability promise, and the day it changes the deletion would silently stop matching anything. So everything under `<Documents>/com.google.firebase.dataconnect` goes.
 - Android keeps one database for the app and scopes rows by uid inside it, so there is no per-user file to single out.
 
 **Call it after signing out.** Ordering matters in one direction only. On Apple platforms the SDK swaps cache files when the auth state changes and closes the one it held, so by the time you clear, the signed-out user's file is closed and its deletion is complete. Clearing while a database is still open also removes the files, but the SDK's open handle keeps using the unlinked file until the process exits: nothing survives on disk either way, what lingers is one handle inside the running process.
