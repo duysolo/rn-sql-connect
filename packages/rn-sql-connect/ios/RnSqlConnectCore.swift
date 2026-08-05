@@ -133,6 +133,73 @@ public final class RnSqlConnectCore: NSObject {
     resolve(nil)
   }
 
+  /// Cache directory the Apple SDK writes to, or nil when it has never been created.
+  ///
+  /// Mirrors `SQLiteCacheProvider`: `<Documents>/com.google.firebase.dataconnect/<identifier>.sqlite3`.
+  /// Only the directory is mirrored, never the file name - the SDK derives that from a hash of the
+  /// connector config plus the signed-in uid, an internal detail with no stability promise. Matching
+  /// on it would silently stop matching the day it changes, and a wipe that quietly erases nothing
+  /// is worse than no wipe at all.
+  private static func cacheDirectoryURL() -> URL? {
+    FileManager.default
+      .urls(for: .documentDirectory, in: .userDomainMask)
+      .first?
+      .appendingPathComponent("com.google.firebase.dataconnect")
+  }
+
+  /// Deletes every cached file, for every connector and every user of this app.
+  ///
+  /// Removes the files one by one rather than the directory in one shot, so the count reported back
+  /// is the number actually erased, and so one undeletable file does not abort the rest.
+  @objc public func clearCache(
+    resolve: @escaping (Any?) -> Void,
+    reject: @escaping (String, String, String) -> Void
+  ) {
+    guard let directory = Self.cacheDirectoryURL() else {
+      reject("internal", "Could not resolve the documents directory", "")
+      return
+    }
+
+    let manager = FileManager.default
+    guard manager.fileExists(atPath: directory.path) else {
+      // Never queried, or already cleared. Both are "nothing on disk", not failures.
+      resolve(0)
+      return
+    }
+
+    let contents: [URL]
+    do {
+      contents = try manager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+    } catch {
+      reject("internal", "Could not read the Data Connect cache directory: \(error)", "")
+      return
+    }
+
+    var removed = 0
+    var failures: [String] = []
+    for url in contents {
+      do {
+        try manager.removeItem(at: url)
+        removed += 1
+      } catch {
+        failures.append("\(url.lastPathComponent): \(error.localizedDescription)")
+      }
+    }
+
+    if failures.isEmpty {
+      resolve(removed)
+    } else {
+      // Partial success still reports as failure: a caller clearing a signed-out user's data has
+      // to be able to tell "erased" from "mostly erased".
+      reject(
+        "internal",
+        "Removed \(removed) file(s) but \(failures.count) could not be deleted: "
+          + failures.joined(separator: "; "),
+        ""
+      )
+    }
+  }
+
   // MARK: - Operations
 
   @objc public func executeQuery(

@@ -4,6 +4,8 @@ type Listener = (event: QueryEvent) => void
 
 export type NativeMock = Spec & {
   __calls: { method: string; args: unknown[] }[]
+  /** What `clearCache` should report back. */
+  __filesRemoved?: number
   __emit: (event: QueryEvent) => void
   __listenerCount: () => number
   __queryResults: Map<string, string>
@@ -89,6 +91,10 @@ export const createNativeMock = (): NativeMock => {
     terminate: (...args) => {
       record('terminate', args)
       return Promise.resolve()
+    },
+    clearCache: (...args) => {
+      record('clearCache', args)
+      return maybeFail(mock) ?? Promise.resolve(mock.__filesRemoved ?? 0)
     },
     getDiagnostics: (...args) => {
       record('getDiagnostics', args)

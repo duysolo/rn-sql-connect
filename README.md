@@ -108,6 +108,15 @@ const { data, loading, error, source, refetch } = useSqlConnectQuery(dc, 'ListMo
 - A screen where stale data is only a cosmetic delay: raise `maxAge`.
 - Anything where a stale read is a bug (feature flags, config versions, balances): pass `SERVER_ONLY` explicitly. Do not rely on `maxAge` staying `0` forever.
 
+The cache lives on disk and nothing clears it automatically - not `terminate()`, not signing out. Both SDKs scope cached rows by uid, so the next person to sign in cannot read the previous one's data, but that data is still on the device. Erase it when a session ends:
+
+```ts
+import { clearCache } from 'rn-sql-connect'
+
+await signOut(getAuth())
+await clearCache() // deletes every Data Connect cache file for this app
+```
+
 ### Auth and App Check
 
 Nothing to wire up. The native SDKs read the current user and the App Check token from the same `FirebaseApp`. `@auth(USER)` operations work as soon as the user is signed in through `@react-native-firebase/auth`, verified on both platforms.

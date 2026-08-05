@@ -6,6 +6,7 @@ export {
   type Diagnostics,
   type EmulatorOptions,
 } from './core/instance'
+export { clearCache } from './core/cache'
 export { executeMutation, executeQuery } from './core/operations'
 export { activeSubscriptionCount, subscribe } from './core/subscriptions'
 export { durationToSeconds } from './core/duration'

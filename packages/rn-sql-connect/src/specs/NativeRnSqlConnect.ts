@@ -64,6 +64,13 @@ export interface Spec extends TurboModule {
   terminate(instanceKey: string): Promise<void>
 
   /**
+   * Deletes every Data Connect cache file this app has on disk and resolves with
+   * the number of files removed. App-wide, not per instance: neither SDK offers a
+   * documented way to address one connector's cache.
+   */
+  clearCache(): Promise<number>
+
+  /**
    * Returns JSON diagnostics: instance count, live subscription ids, whether a
    * Firebase user is signed in, and whether App Check is configured. Meant for
    * troubleshooting `unauthorized` responses and leak hunting in tests.

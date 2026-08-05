@@ -5,7 +5,7 @@ Everything exported from `rn-sql-connect` and `rn-sql-connect/react`. The API is
 
 | Group | Exports |
 | --- | --- |
-| Instances | [`getSqlConnect`](#getsqlconnectconfig-settings), [`connectSqlConnectEmulator`](#connectsqlconnectemulatorinstance-options), [`terminate`](#terminateinstance), [`getDiagnostics`](#getdiagnosticsinstance) |
+| Instances | [`getSqlConnect`](#getsqlconnectconfig-settings), [`connectSqlConnectEmulator`](#connectsqlconnectemulatorinstance-options), [`terminate`](#terminateinstance), [`clearCache`](#clearcache), [`getDiagnostics`](#getdiagnosticsinstance) |
 | Operations | [`executeQuery`](#executequeryinstance-operationname-variables-options), [`executeMutation`](#executemutationinstance-operationname-variables), [variables](#variables) |
 | Caching | [`cacheSettings`](#caching), [the `maxAge` trap](#the-trap-in-maxage), [fetch policies](#fetch-policies) |
 | Realtime | [`subscribe`](#subscribeinstance-operationname-variables-observer), [server-side requirements](#server-side-requirements) |
@@ -61,7 +61,27 @@ Closes the native instance, cancels its subscriptions, and forgets the handle. A
 
 Using a handle after terminating it throws `not-configured`.
 
-**It does not clear the cache.** With `storage: 'persistent'` the cached responses stay on disk and are available to the next instance, including after an app restart and after a different user signs in. If that matters, see [after sign-out](../guides/05-auth.md#after-sign-out-the-cache-is-still-there).
+**It does not clear the cache.** With `storage: 'persistent'` the cached responses stay on disk and survive an app restart. Use [`clearCache()`](#clearcache) for that. See [after sign-out](../guides/05-auth.md#after-sign-out-the-cache-is-still-there).
+
+### `clearCache()`
+
+```ts
+import { clearCache } from 'rn-sql-connect'
+
+await signOut(getAuth())
+const filesRemoved = await clearCache()
+```
+
+Deletes every Data Connect cache file this app has on disk. Resolves with the number of files removed; rejects with `SqlConnectError` (`internal`) if the platform refused a deletion, because "could not clear" must not read the same as "nothing to clear".
+
+**App-wide, not per instance.** It takes no argument on purpose:
+
+- Apple names each cache file after a hash of the connector config plus a hash of the signed-in uid. Reproducing that recipe to delete one slice would depend on an internal detail with no stability promise, and the day it changes the deletion would silently stop matching anything.
+- Android keeps one database for the app and scopes rows by uid inside it, so there is no per-user file to single out.
+
+**Call it after signing out.** Ordering matters in one direction only. On Apple platforms the SDK swaps cache files when the auth state changes and closes the one it held, so by the time you clear, the signed-out user's file is closed and its deletion is complete. Clearing while a database is still open also removes the files, but the SDK's open handle keeps using the unlinked file until the process exits: nothing survives on disk either way, what lingers is one handle inside the running process.
+
+Handles stay valid. There is no need to `terminate()` first or to rebuild anything afterwards - the SDK recreates what it needs on the next query. Running it twice, or on a fresh install, reports `0` rather than failing.
 
 ### `getDiagnostics(instance)`
 

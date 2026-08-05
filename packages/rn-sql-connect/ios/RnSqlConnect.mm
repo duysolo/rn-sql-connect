@@ -156,6 +156,12 @@ static void (^RNSCReject(RCTPromiseRejectBlock reject))(NSString *, NSString *, 
   [_core terminateWithInstanceKey:instanceKey resolve:resolve reject:RNSCReject(reject)];
 }
 
+- (void)clearCache:(RCTPromiseResolveBlock)resolve
+            reject:(RCTPromiseRejectBlock)reject
+{
+  [_core clearCacheWithResolve:resolve reject:RNSCReject(reject)];
+}
+
 - (void)getDiagnostics:(NSString *)instanceKey
                resolve:(RCTPromiseResolveBlock)resolve
                 reject:(RCTPromiseRejectBlock)reject

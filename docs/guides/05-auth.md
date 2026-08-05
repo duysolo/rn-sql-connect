@@ -44,30 +44,52 @@ This costs an hour of debugging if you meet it without knowing, because everythi
 
 ## After sign-out, the cache is still there
 
-Worth being precise about, because getting it wrong shows one user another user's data.
+Two separate questions, and mixing them up leads to the wrong fix.
 
-**`terminate()` does not clear the cache.** It closes the native instance and cancels its subscriptions, nothing more. With the default `storage: 'persistent'` the cached responses stay on disk, survive an app restart, and are still there for the next person who signs in on that device.
+### Can the next person who signs in read it? No.
 
-Do not rely on sign-out to protect user-scoped data. Pick one:
+Both SDKs scope cached rows by the signed-in uid, so this is handled for you:
+
+- Apple derives the cache file name from a hash of the connector config **plus a hash of the uid**, and swaps files when the auth state changes. Different user, different file.
+- Android keeps one database and scopes it internally: `users(auth_uid)`, with `queries` and `entities` both keyed `UNIQUE (user_id, ...)` and cascading from it. Different user, different rows.
+
+So a `CACHE_ONLY` read after another user signs in does not return the previous user's data. It misses.
+
+### Is their data still on the device? Yes, until you clear it.
+
+That is the real exposure, and it is about data at rest rather than one user reading another's:
+
+**`terminate()` does not clear the cache.** It closes the native instance and cancels its subscriptions, nothing more. With the default `storage: 'persistent'` the rows stay in an app-private SQLite database and survive an app restart.
+
+For sign-out, and especially for account deletion, erase them:
 
 ```ts
-// Option 1, the simplest: read user-scoped data from the server.
+import { getAuth, signOut } from '@react-native-firebase/auth'
+import { clearCache } from 'rn-sql-connect'
+
+await signOut(getAuth())
+await clearCache()   // deletes every Data Connect cache file for this app
+```
+
+Sign out first. On Apple platforms the auth change makes the SDK close the file it was holding, so the deletion is complete rather than leaving one open handle alive until the process exits.
+
+If you would rather never write user data to disk in the first place, the alternatives still apply:
+
+```ts
+// Read user-scoped data from the server.
 await executeQuery(dc, 'GetMyProfile', undefined, {
   fetchPolicy: QueryFetchPolicy.SERVER_ONLY,
 })
 ```
 
 ```ts
-// Option 2: keep user-scoped operations on an instance that caches in memory
-// only, so nothing outlives the process.
+// Or keep user-scoped operations on an instance that caches in memory only.
 export const userScoped = getSqlConnect(config, {
   cacheSettings: { storage: 'memory' },
 })
 ```
 
-Option 2 needs a **separate connector** if the same connector also serves public data you want cached on disk, since cache settings are per instance and instances are keyed by connector.
-
-Either way `@auth` still protects the server: a signed-out caller cannot fetch another user's rows. The exposure is limited to what is already on that device, and only through `CACHE_ONLY` or a `PREFER_CACHE` read inside `maxAge`. Small, but not zero, and much cheaper to get right now than to explain later.
+The second needs a **separate connector** if the same connector also serves public data you want cached on disk, since cache settings are per instance and instances are keyed by connector.
 
 ## Diagnosing a refused call
 

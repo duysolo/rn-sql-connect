@@ -21,7 +21,8 @@
     "example:start": "npm run start --workspace rn-sql-connect-example",
     "vendor:sync": "node scripts/sync-vendored-dataconnect.mjs",
     "vendor:check": "node scripts/sync-vendored-dataconnect.mjs --check",
-    "verify:package": "node scripts/verify-package.mjs"
+    "verify:package": "node scripts/verify-package.mjs",
+    "publish:main": "npm publish -w rn-sql-connect"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

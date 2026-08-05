@@ -1,5 +1,6 @@
 package com.rnsqlconnect
 
+import android.database.sqlite.SQLiteDatabase
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -96,6 +97,58 @@ class RnSqlConnectModule(reactContext: ReactApplicationContext) :
         instanceApps.remove(instanceKey)
       }.fold(
         onSuccess = { promise.resolve(null) },
+        onFailure = { rejectWith(promise, it, null) },
+      )
+    }
+  }
+
+  /**
+   * Deletes every Data Connect cache file this app has on disk.
+   *
+   * App-wide on purpose. The SDK keeps ONE database here and scopes rows by uid inside it (see
+   * `DataConnectCacheDatabase`, which carries an auth-uid column), so there is no per-user file to
+   * single out - clearing one user means clearing the file.
+   *
+   * Deletion goes through [SQLiteDatabase.deleteDatabase] so the journal, WAL and shm siblings go
+   * with it; deleting the main file alone would leave a WAL holding the very rows meant to be gone.
+   * Any straggler matching the prefix is swept afterwards, which also covers files left behind by
+   * an SDK version that names its siblings differently.
+   *
+   * Files still open are deleted too: the handle keeps working against the unlinked file until the
+   * process exits, so nothing survives on disk either way. Callers should sign out first anyway -
+   * see the JS docs on `clearCache`.
+   */
+  override fun clearCache(promise: Promise) {
+    scope.launch {
+      runCatching {
+        // `getDatabasePath` is the only supported way to reach that directory; the name passed in
+        // is a probe, never created.
+        val databasesDir = reactApplicationContext.getDatabasePath("probe").parentFile
+          ?: return@runCatching 0
+
+        val files = databasesDir.listFiles { file -> file.name.startsWith(CACHE_DB_PREFIX) }
+          ?: return@runCatching 0
+
+        var removed = 0
+        // Main databases first, so deleteDatabase can take its own siblings with it.
+        files
+          .filter { file -> SIBLING_SUFFIXES.none { file.name.endsWith(it) } }
+          .forEach { file ->
+            if (SQLiteDatabase.deleteDatabase(file)) {
+              removed += 1
+            }
+          }
+
+        databasesDir.listFiles { file -> file.name.startsWith(CACHE_DB_PREFIX) }
+          ?.forEach { file ->
+            if (file.delete()) {
+              removed += 1
+            }
+          }
+
+        removed
+      }.fold(
+        onSuccess = { promise.resolve(it) },
         onFailure = { rejectWith(promise, it, null) },
       )
     }
@@ -326,6 +379,16 @@ class RnSqlConnectModule(reactContext: ReactApplicationContext) :
   }.getOrDefault(false)
 
   companion object {
+    /**
+     * Prefix the SDK gives its cache databases: `FirebaseDataConnectImpl` builds the name as
+     * `"dataconnect_" + calculateCacheDbUniqueName(backendInfo)` and hands it to
+     * `Context.getDatabasePath`.
+     */
+    private const val CACHE_DB_PREFIX = "dataconnect_"
+
+    /** SQLite's own sidecars. Deleted through the main file, listed here so they are not treated as one. */
+    private val SIBLING_SUFFIXES = listOf("-journal", "-wal", "-shm")
+
     const val NAME = "RnSqlConnect"
   }
 }

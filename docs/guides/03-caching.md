@@ -87,7 +87,7 @@ render(await executeQuery(dc, 'ListArticles', vars, {
 
 `persistent` means on disk and across app restarts. **Nothing clears it automatically**, not `terminate()`, not signing out. Treat it as a device-level cache when deciding what to put behind it.
 
-That has a privacy consequence worth reading before shipping: [auth, after sign-out](05-auth.md#after-sign-out-the-cache-is-still-there).
+To erase it, call [`clearCache()`](../reference/api.md#clearcache) - typically right after signing out. Read [auth, after sign-out](05-auth.md#after-sign-out-the-cache-is-still-there) before shipping: what the cache does and does not expose is narrower than it first looks, and the fix differs accordingly.
 
 ---
 
@@ -107,4 +107,6 @@ The practical consequence: decide `maxAge` before the first query runs, not late
 
 It does not clear the cache on disk. Android releases the client; Apple's SDK has no teardown at
 all, so `terminate()` drops the reference and nothing else. Anything already written stays on disk.
-If an app needs cached data gone at sign-out, this package cannot do it today.
+
+That is what [`clearCache()`](../reference/api.md#clearcache) is for. The two are unrelated: clearing
+does not invalidate handles, and terminating does not erase anything.
