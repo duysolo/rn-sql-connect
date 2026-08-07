@@ -15,6 +15,9 @@ Every entry here is a failure that actually happened while building or testing t
 | App crashes at launch, API key length | [not configured](#not-configured-firebase-app-default-is-not-configured) |
 | `Class FIRApp is implemented in both` | [duplicate FIRApp](#duplicate-firapp-warnings-in-the-log) |
 | `unauthenticated` while signed in | [unauthenticated](#unauthenticated-on-an-operation-while-signed-in) |
+| `Field kind_ for ... not found. Known fields are` | [R8 renamed the protobuf fields](#field-kind_-for--not-found-known-fields-are) |
+| Every operation fails, but only in a release build | [R8 renamed the protobuf fields](#field-kind_-for--not-found-known-fields-are) |
+| `getDiagnostics` says not signed in, but you are | [diagnostics in a minified build](#getdiagnostics-reports-no-user-and-no-app-check-in-a-release-build) |
 | Data is older than the database | [stale data](#a-query-returns-stale-data) |
 | Another user's data after switching accounts | [cache after sign-out](#the-previous-users-data-appears-after-signing-in-as-someone-else) |
 | A subscription only fires once | [subscription silent](#a-subscription-never-fires-after-the-first-value) |
@@ -96,6 +99,60 @@ console.log(await getDiagnostics(dc))
 
 - `hasCurrentUser: false`: the sign-in did not reach the Firebase app this instance uses. Check `appName` if you use a secondary app.
 - `hasCurrentUser: true` with the right uid: the server is refusing the call. The most common cause is **`@auth(level: USER)` with an anonymous user**, which is rejected by design. The server says so in `debug_details`. Use `USER_ANON` on the operation if anonymous callers should be allowed.
+
+### `Field kind_ for ... not found. Known fields are`
+
+```
+SqlConnectError: Field kind_ for j6.N0 not found.
+Known fields are [public int j6.N0.e, public java.lang.Object j6.N0.f, ...]
+```
+
+Android only, release builds only, and it takes down *every* operation. Debug is fine, which is what makes it expensive to find.
+
+protobuf-javalite does not read its fields directly. `MessageSchema` takes the field names out of the info string passed to `newMessageInfo(...)` and calls `Class.getDeclaredField("kind_")`. R8 renames the fields and leaves that string alone, so the lookup misses. `j6.N0` is `com.google.protobuf.Value` and `j6.w0` is `Struct` - the two types carrying every variable you send and every row you get back.
+
+**This package ships the fix in `android/consumer-rules.pro` from 0.3.1 onward, so an app on that version needs no action.** If you are pinned below it, or you see this from a different protobuf runtime, add to `android/app/proguard-rules.pro`:
+
+```proguard
+-keepclassmembers class * extends com.google.protobuf.GeneratedMessageLite {
+    <fields>;
+}
+-dontwarn com.google.protobuf.**
+```
+
+To confirm the diagnosis rather than guess, read the mapping file from the failing build - `android/app/build/outputs/mapping/release/mapping.txt`:
+
+```
+com.google.protobuf.Value -> j6.N0:
+    java.lang.Object kind_ -> f          # renamed, so the lookup for "kind_" fails
+```
+
+An app can contain more than one protobuf runtime, each needing its own rule against its own base class. Count them:
+
+```sh
+strings classes*.dex | grep -c 'not found. Known fields are'   # one hit per runtime
+```
+
+`androidx.datastore` and `firebase-auth` both ship this rule for their own repackaged copies, so those are already covered.
+
+### `getDiagnostics` reports no user and no App Check in a release build
+
+`hasCurrentUser: false`, `uid: null` and `appCheckConfigured: false` while the app is demonstrably signed in.
+
+`getDiagnostics` reaches Firebase Auth and App Check through reflection, so that an app without `@react-native-firebase/auth` installed still loads this module. Reflection resolves by name, and R8 renames `FirebaseAuth.getCurrentUser`, `FirebaseUser.getUid` and the `FirebaseAppCheck` class. The lookups throw, the failure is swallowed, and you get a confident wrong answer at the exact moment you are trying to diagnose something.
+
+Fixed in `android/consumer-rules.pro` from 0.3.1. Below that version, add:
+
+```proguard
+-keepclassmembers class com.google.firebase.auth.FirebaseAuth {
+    public static ** getInstance(com.google.firebase.FirebaseApp);
+    public ** getCurrentUser();
+}
+-keepclassmembers class com.google.firebase.auth.FirebaseUser {
+    public java.lang.String getUid();
+}
+-keepnames class com.google.firebase.appcheck.FirebaseAppCheck
+```
 
 ### A query returns stale data
 

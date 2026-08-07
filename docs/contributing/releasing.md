@@ -40,9 +40,14 @@ npm run verify:package
 ```
 
 ```
-ok   rn-sql-connect@0.3.0, 309 files
+ok   rn-sql-connect@0.3.1, 131 files
 ok   rn-sql-connect-codegen@0.1.0, 24 files
 ```
+
+It also refuses to pass if `android/build/` made it into the tarball. That is
+Gradle's output directory, and it once accounted for 177 of 309 published files,
+shipping a debug `classes.jar` and TurboModule spec Java generated against
+whatever React Native was installed on the packing machine.
 
 It exists because `npm publish` warns that it "auto-corrected" the `bin` field
 and removed it, which reads like the CLI is about to ship broken. It is not:
@@ -63,6 +68,7 @@ Look for, in order of how badly their absence breaks a consumer:
 | `ios/vendor/FirebaseDataConnect/**` | 52 Swift files. Without them iOS does not compile at all |
 | `RnSqlConnect.podspec` | no pod, no iOS |
 | `android/**` | no Gradle module, no Android |
+| `android/consumer-rules.pro` | without it every consumer's *release* build fails on its first operation, and only the release build |
 | `dist/module`, `dist/typescript` | the built JavaScript and types |
 | `README.md`, `LICENSE` | the npm page and the licence terms |
 

@@ -29,10 +29,20 @@ const CHECKS = [
       'package/LICENSE',
       'package/RnSqlConnect.podspec',
       'package/android/build.gradle',
+      // Load-bearing since 0.3.1: without these ProGuard rules every consumer's
+      // minified Android build dies on its first operation, because R8 renames
+      // the protobuf fields the Data Connect SDK looks up by name. A release
+      // build is exactly where nobody would look for a packaging mistake.
+      'package/android/consumer-rules.pro',
       'package/ios/RnSqlConnect.mm',
       'package/dist/module/index.js',
       'package/dist/typescript/index.d.ts',
     ],
+    // Gradle's output directory is not source. It once accounted for 177 of the
+    // 308 published files, shipping a debug classes.jar and TurboModule spec
+    // Java generated against whatever React Native happened to be on the
+    // machine that packed it.
+    forbiddenPrefixes: ['package/android/build/', 'package/ios/build/'],
     // The vendored Apple SDK is the one thing whose absence breaks every iOS
     // consumer while leaving Android and the JavaScript tests perfectly green.
     minVendorFiles: 50,
@@ -82,6 +92,12 @@ for (const check of CHECKS) {
   for (const file of check.files) {
     if (!list.includes(file)) {
       problems.push(`missing ${file.replace('package/', '')}`)
+    }
+  }
+  for (const prefix of check.forbiddenPrefixes ?? []) {
+    const leaked = list.filter(f => f.startsWith(prefix)).length
+    if (leaked > 0) {
+      problems.push(`${leaked} files under ${prefix.replace('package/', '')} - build output must not ship`)
     }
   }
   if (check.minVendorFiles) {

@@ -35,6 +35,16 @@ Mocking at this level keeps your tests about your data layer. Reaching further d
 
 That needs the example app and the Data Connect emulator, no Firebase project required: [local testing](../contributing/local-testing.md).
 
+## Run a minified Android build before you ship
+
+Once per release, install the actual release APK and open a screen that reads data. Not the debug build - a different one.
+
+Debug builds are not minified, so they never exercise the code path where R8 has renamed things. The Data Connect SDK resolves protobuf fields by name at runtime, and this package resolves Firebase Auth by name too. Both fail silently under a rename, and both fail *only* in a release build. This package carries the ProGuard rules that keep them working, but a rule can be undone by an app's own configuration, and the only way to know is to run it.
+
+The cheapest useful check is any screen that performs one query. If it renders, the reflective paths resolved.
+
+If it does not, both failure signatures are in [troubleshooting](../troubleshooting.md#field-kind_-for--not-found-known-fields-are).
+
 ---
 
 Next: [Migrating from the web SDK](08-migrating-from-the-web-sdk.md) | [Troubleshooting](../troubleshooting.md)
