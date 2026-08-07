@@ -31,3 +31,21 @@
 -keep class com.google.firebase.dataconnect.AnyValue { *; }
 
 -keep class com.rnsqlconnect.** { *; }
+
+# getDiagnostics() reads the signed-in user and App Check availability by
+# reflection, so that an app without firebase-auth on the classpath still loads
+# this module. Reflection means names, and R8 renames FirebaseAuth.getCurrentUser,
+# FirebaseUser.getUid and the whole FirebaseAppCheck class. The lookups then throw,
+# runCatching swallows it, and diagnostics report "no signed-in user, no App Check"
+# on every minified build - a wrong answer handed to someone who is, by definition,
+# already debugging. Keeping just these names is enough; the classes themselves may
+# still be renamed. Rules naming absent classes are ignored, so an app without
+# firebase-auth is unaffected.
+-keepclassmembers class com.google.firebase.auth.FirebaseAuth {
+  public static ** getInstance(com.google.firebase.FirebaseApp);
+  public ** getCurrentUser();
+}
+-keepclassmembers class com.google.firebase.auth.FirebaseUser {
+  public java.lang.String getUid();
+}
+-keepnames class com.google.firebase.appcheck.FirebaseAppCheck
